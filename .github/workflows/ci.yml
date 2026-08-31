@@ -1,0 +1,33 @@
+name: CI
+
+# Deliberately minimal: one workflow, one job. It runs on pull requests and on
+# pushes to main, and nowhere else, so a busy fork does not burn Actions minutes
+# re-verifying the same commit on every branch push.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      - name: Build both packages
+        run: |
+          npm run build --workspace extension
+          npm run build --workspace backend

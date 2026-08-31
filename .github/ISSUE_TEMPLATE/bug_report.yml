@@ -1,0 +1,51 @@
+name: Bug report
+description: Something does not work as documented
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a lead at ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: portal-type
+    attributes:
+      label: Bitrix24 portal
+      options:
+        - Cloud on bitrix24.com
+        - Cloud on another Bitrix24 domain
+        - Cloud on a custom domain
+        - Self hosted
+    validations:
+      required: true
+
+  - type: input
+    id: chrome-version
+    attributes:
+      label: Chrome version
+      placeholder: "141.0.7390.54"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: >
+        Backend log lines and any errors from the extension service worker
+        console. Redact tokens, secrets, and customer data.
+      render: shell

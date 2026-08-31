@@ -1,0 +1,50 @@
+{
+    "manifest_version": 3,
+    "name": "Bitrix24 Comment Manager",
+    "version": "2.0.0",
+    "description": "Governed comment workflow for Bitrix24 CRM leads",
+    "permissions": [
+        "activeTab",
+        "tabs",
+        "storage",
+        "scripting"
+    ],
+    "host_permissions": [
+        "https://*.bitrix24.com/*"
+    ],
+    "optional_host_permissions": [
+        "https://*/*"
+    ],
+    "options_page": "options/options.html",
+    "background": {
+        "service_worker": "background/service-worker.ts"
+    },
+    "action": {
+        "default_popup": "popup/popup.html",
+        "default_icon": {
+            "16": "assets/icon-16.png",
+            "32": "assets/icon-32.png",
+            "48": "assets/icon-48.png",
+            "128": "assets/icon-128.png"
+        }
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://*.bitrix24.com/*"
+            ],
+            "js": [
+                "content/content.ts"
+            ]
+        }
+    ],
+    "content_security_policy": {
+        "extension_pages": "script-src 'self'; object-src 'self'"
+    },
+    "icons": {
+        "16": "assets/icon-16.png",
+        "32": "assets/icon-32.png",
+        "48": "assets/icon-48.png",
+        "128": "assets/icon-128.png"
+    }
+}

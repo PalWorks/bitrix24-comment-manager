@@ -1,0 +1,27 @@
+{
+    "extends": "../tsconfig.base.json",
+    "compilerOptions": {
+        "outDir": "dist",
+        "rootDir": ".",
+        "lib": [
+            "ES2022",
+            "DOM",
+            "DOM.Iterable"
+        ],
+        "types": [
+            "chrome"
+        ]
+    },
+    "include": [
+        "env.d.ts",
+        "background/**/*.ts",
+        "content/**/*.ts",
+        "popup/**/*.ts",
+        "options/**/*.ts",
+        "shared/**/*.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}

@@ -1,0 +1,10 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/security/advisories
+    about: >
+      Do not open a public issue. Use private vulnerability reporting on the
+      Security tab. See SECURITY.md.
+  - name: Setup help
+    url: https://github.com/
+    about: Read docs/SETUP.md first, especially the troubleshooting table.

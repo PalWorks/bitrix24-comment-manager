@@ -1,0 +1,18 @@
+{
+    "name": "bitrix24-comment-extension-client",
+    "version": "2.0.0",
+    "private": true,
+    "description": "Chrome extension for governed comment workflow on Bitrix24 CRM leads",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "typecheck": "tsc --noEmit"
+    },
+    "devDependencies": {
+        "@crxjs/vite-plugin": "^2.0.0-beta.25",
+        "@types/chrome": "^0.0.268",
+        "typescript": "^5.4.0",
+        "vite": "^8.2.2"
+    }
+}

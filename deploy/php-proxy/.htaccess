@@ -1,0 +1,6 @@
+Options -MultiViews -Indexes
+RewriteEngine On
+
+# Route everything through the PHP reverse proxy
+RewriteCond %{REQUEST_FILENAME} !proxy.php
+RewriteRule ^(.*)$ proxy.php [QSA,L]

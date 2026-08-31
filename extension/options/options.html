@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitrix24 Comment Manager Settings</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+
+<body>
+    <div id="options-app">
+
+        <div id="view-loading" class="view">
+            <div class="loading-container">
+                <div class="spinner"></div>
+                <p class="loading-text">Loading...</p>
+            </div>
+        </div>
+
+
+        <div id="config-section" class="card hidden">
+            <h2 class="card-title">Configuration</h2>
+
+            <div class="setting-block">
+                <label class="setting-label" for="opt-backend-url">Backend URL</label>
+                <p class="setting-help">
+                    The API this extension talks to. Run your own from the project repository,
+                    or use the one your administrator gave you.
+                </p>
+                <div class="setting-row">
+                    <input id="opt-backend-url" class="setting-input" type="url"
+                        placeholder="https://api.example.com" autocomplete="off" spellcheck="false">
+                    <button id="btn-save-backend" class="btn-primary" type="button">Save</button>
+                </div>
+                <p id="backend-status" class="setting-status hidden" role="status"></p>
+            </div>
+
+            <div class="setting-block">
+                <label class="setting-label" for="opt-portal-input">Bitrix24 portals</label>
+                <p class="setting-help">
+                    Portals on <code>bitrix24.com</code> work out of the box. Add your portal here
+                    if it is on another Bitrix24 domain, on your own domain, or self hosted.
+                    Chrome will ask you to approve access to that site.
+                </p>
+                <div class="setting-row">
+                    <input id="opt-portal-input" class="setting-input" type="text"
+                        placeholder="acme.bitrix24.de" autocomplete="off" spellcheck="false">
+                    <button id="btn-add-portal" class="btn-primary" type="button">Add portal</button>
+                </div>
+                <p id="portal-status" class="setting-status hidden" role="status"></p>
+                <ul id="portal-list" class="portal-list"></ul>
+                <p id="portal-empty" class="empty-message">No additional portals added.</p>
+            </div>
+        </div>
+
+        <div id="view-logged-out" class="view hidden">
+            <div class="options-header">
+                <img src="../assets/icon-32.png" alt="" class="header-logo" width="28" height="28">
+                <h1>Bitrix24 Comment Manager</h1>
+                <span class="badge badge-disconnected">Not Connected</span>
+            </div>
+            <div class="card">
+                <p class="logged-out-message">You are not logged in. Open the extension popup to connect your Bitrix24
+                    account.</p>
+            </div>
+        </div>
+
+        <div id="view-logged-in" class="view hidden">
+            <div class="options-header">
+                <img src="../assets/icon-32.png" alt="" class="header-logo" width="28" height="28">
+                <h1>Bitrix24 Comment Manager</h1>
+                <span class="badge badge-connected">Connected</span>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Agent Information</h2>
+                <div class="info-row">
+                    <span class="info-label">Domain</span>
+                    <span id="opt-agent-domain" class="info-value"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Member ID</span>
+                    <span id="opt-agent-member-id" class="info-value"></span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Session Status</h2>
+                <div class="info-row">
+                    <span class="info-label">Status</span>
+                    <span id="opt-session-status" class="info-value status-active">Authenticated</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Expires</span>
+                    <span id="opt-session-expiry" class="info-value"></span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Recent Activity</h2>
+                <div id="activity-container">
+                    <div class="activity-table-wrapper">
+                        <table id="activity-table" class="activity-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Lead</th>
+                                    <th>Action</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activity-tbody"></tbody>
+                        </table>
+                    </div>
+                    <p id="activity-empty" class="empty-message hidden">No recent activity.</p>
+                    <p id="activity-error" class="error-message hidden"></p>
+                </div>
+            </div>
+
+            <button id="btn-options-logout" class="btn btn-danger">Logout</button>
+            <p id="logout-confirmation" class="confirmation-message hidden">You have been logged out.</p>
+        </div>
+
+    </div>
+    <script type="module" src="options.ts"></script>
+</body>
+
+</html>

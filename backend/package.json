@@ -1,0 +1,30 @@
+{
+    "name": "bitrix24-comment-backend",
+    "version": "2.0.0",
+    "private": true,
+    "description": "Backend API server for Bitrix24 Comment Extension",
+    "type": "module",
+    "main": "dist/server.js",
+    "scripts": {
+        "dev": "tsx watch src/server.ts",
+        "build": "tsc",
+        "start": "node dist/server.js",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.0",
+        "express": "^4.18.0",
+        "helmet": "^7.1.0",
+        "jsonwebtoken": "^9.0.0",
+        "mysql2": "^3.9.0"
+    },
+    "devDependencies": {
+        "@types/cors": "^2.8.17",
+        "@types/express": "^4.17.21",
+        "@types/jsonwebtoken": "^9.0.6",
+        "@types/node": "^20.11.0",
+        "tsx": "^4.7.0",
+        "typescript": "^5.4.0"
+    }
+}

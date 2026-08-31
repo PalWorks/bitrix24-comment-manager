@@ -1,0 +1,39 @@
+{
+    "name": "bitrix24-comment-extension",
+    "version": "2.0.0",
+    "private": true,
+    "description": "Bitrix24 Chrome Extension Comment System with governed workflow",
+    "workspaces": [
+        "extension",
+        "backend"
+    ],
+    "scripts": {
+        "lint": "eslint . --ext .ts,.tsx",
+        "lint:fix": "eslint . --ext .ts,.tsx --fix",
+        "format": "prettier --write \"**/*.{ts,tsx,json,md,css,html}\"",
+        "typecheck": "npm run typecheck --workspaces",
+        "test": "vitest run",
+        "test:unit": "vitest run tests/unit/",
+        "test:integration": "vitest run tests/integration/",
+        "test:coverage": "vitest run --coverage",
+        "test:integration:setup": "echo 'Integration tests self-start mock servers. Run: npm run test:integration'",
+        "test:e2e": "echo 'E2E tests require Playwright. See docs/qa/e2e-test-results.md'",
+        "test:load": "echo 'Load tests require k6. See tests/load/load-test.js'"
+    },
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^7.0.0",
+        "@typescript-eslint/parser": "^7.0.0",
+        "@vitest/coverage-v8": "^4.1.11",
+        "eslint": "^8.57.0",
+        "jsdom": "^28.1.0",
+        "prettier": "^3.2.0",
+        "typescript": "^5.4.0",
+        "vitest": "^4.1.11"
+    },
+    "engines": {
+        "node": ">=20.0.0"
+    },
+    "dependencies": {
+        "vite": "8.2.2"
+    }
+}
