@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { installChromeMock, uninstallChromeMock } from '../../helpers/chromeMock';
 
 /**
- * Mock the chrome.runtime API and fetch globally before importing the module.
+ * Mock fetch globally before importing the module.
  */
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
+
+const TEST_BACKEND = 'https://api.example.com';
 
 /**
  * Re-import the module under test for each test to get a clean module state.
@@ -18,18 +21,47 @@ async function getApiClient() {
  * Provides a mock getToken implementation for authenticated requests.
  */
 vi.mock('../../../extension/background/tokenManager', () => ({
-    getToken: vi.fn(() => 'test-jwt-token'),
+    getToken: vi.fn(async () => 'test-jwt-token'),
 }));
 
 describe('apiClient', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.useFakeTimers();
         vi.resetModules();
         mockFetch.mockReset();
+        installChromeMock();
+
+        // Configure a backend explicitly. Relying on the build time default
+        // would make these tests pass or fail depending on whether a root .env
+        // happens to exist, which is not a property of the code under test.
+        const { updateSettings } = await import('../../../extension/shared/settings');
+        await updateSettings({ backendUrl: TEST_BACKEND });
     });
 
     afterEach(() => {
         vi.useRealTimers();
+        uninstallChromeMock();
+    });
+
+    it('should refuse to call out when no backend is configured', async () => {
+        const { updateSettings } = await import('../../../extension/shared/settings');
+        await updateSettings({ backendUrl: '' });
+
+        const { apiRequest } = await getApiClient();
+        const result = await apiRequest('/api/test');
+
+        expect(result.success).toBe(false);
+        expect(result.error?.code).toBe('NOT_CONFIGURED');
+        expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should call the configured backend origin', async () => {
+        mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+
+        const { apiRequest } = await getApiClient();
+        await apiRequest('/api/test');
+
+        expect(mockFetch.mock.calls[0][0]).toBe(`${TEST_BACKEND}/api/test`);
     });
 
     describe('successful requests', () => {
