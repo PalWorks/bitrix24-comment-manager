@@ -83,3 +83,48 @@ After approval:
 1. Verify the extension installs correctly from the Chrome Web Store
 2. Test the full login and comment workflow with the production backend
 3. Confirm the extension ID matches what is configured in `CORS_ORIGINS`
+
+
+## Upgrading an existing listing to v2.0.0
+
+v2.0.0 adds two things that trigger a **permission review**, which is slower than
+a normal update. Expect several days rather than one.
+
+| New in the manifest | Why it is there |
+|---|---|
+| `"scripting"` permission | Registers a content script for a portal the user adds, on a domain the static match cannot cover |
+| `optional_host_permissions: ["https://*/*"]` | Bitrix24 portals live on regional domains, customer owned domains, and self hosted installs. There is no published list to enumerate, and match patterns cannot wildcard a top level domain |
+
+### Justification text for the review form
+
+Reviewers ask why a broad host permission is needed. This is accurate and has
+the shape they look for:
+
+> The extension operates on Bitrix24 CRM portals. Bitrix24 serves portals on
+> several regional top level domains, on customer owned domains, and on self
+> hosted installations, and publishes no list of them. Chrome match patterns
+> cannot wildcard a top level domain, so the set cannot be enumerated in the
+> manifest.
+>
+> The permission is **optional**, never requested at install time. It is
+> requested one origin at a time, through `chrome.permissions.request`, only
+> when a user explicitly adds their own portal on the options page, and it is
+> revoked when they remove it. The default installed grant is limited to
+> `https://*.bitrix24.com/*`.
+>
+> The content script reads only the page URL, to detect the CRM lead ID, and
+> sends that ID to the extension's service worker. It does not read page
+> content, does not modify the page, and does not transmit anything to a third
+> party.
+
+### Before you submit
+
+- The build carries **no backend URL**. Users configure one on first run. If you
+  want a pre-configured build for your own users, set `VITE_BACKEND_URL` before
+  building and say so in the listing description.
+- `CORS_ORIGINS` on the backend must contain the published extension ID. That ID
+  does not change when you update an existing listing.
+- Privacy tab: the extension stores a session token and the user's chosen
+  backend URL locally. It transmits comment text only to the backend the user
+  configured. Declare accordingly, and update this if you later enable
+  telemetry.
