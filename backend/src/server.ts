@@ -58,10 +58,24 @@ app.get('/health', (_req: Request, res: Response) => {
 
 app.get('/readiness', async (_req: Request, res: Response) => {
     const checks: { config: boolean; uptime: number; database: boolean } = {
-        config: Boolean(config.jwtSecret && config.bitrix24ClientId),
+        config: config.supportOnly
+            ? Boolean(config.resendApiKey && config.supportToEmail)
+            : Boolean(config.jwtSecret && config.bitrix24ClientId),
         uptime: process.uptime(),
         database: false,
     };
+
+    // A support only instance keeps no state, so a database it never opens must
+    // not hold it out of readiness.
+    if (config.supportOnly) {
+        const ready = checks.config;
+        res.status(ready ? 200 : 503).json({
+            status: ready ? 'ready' : 'not_ready',
+            mode: 'support-only',
+            checks: { config: checks.config, uptime: checks.uptime },
+        });
+        return;
+    }
 
     try {
         await getPool().execute('SELECT 1');
@@ -77,10 +91,25 @@ app.get('/readiness', async (_req: Request, res: Response) => {
     });
 });
 
-app.use('/auth', authRouter);
-app.use('/api/leads', leadsRouter);
-app.use('/api/comments', commentsRouter);
-app.use('/api/activity', activityRouter);
+if (config.supportOnly) {
+    // A support only instance has no Bitrix24 application and no audit log, so
+    // these routes could not do anything meaningful. Answering with a reason is
+    // clearer than a 404 that reads like a wrong URL.
+    app.use(['/auth', '/api'], (_req: Request, res: Response) => {
+        res.status(503).json({
+            error: {
+                code: 'SUPPORT_ONLY',
+                message:
+                    'This server only answers support requests. Point the extension at your own backend.',
+            },
+        });
+    });
+} else {
+    app.use('/auth', authRouter);
+    app.use('/api/leads', leadsRouter);
+    app.use('/api/comments', commentsRouter);
+    app.use('/api/activity', activityRouter);
+}
 
 app.use((_req: Request, res: Response) => {
     res.status(404).json({

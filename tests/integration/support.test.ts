@@ -287,6 +287,24 @@ describe('Support endpoint', () => {
             expect(resendCalls()).toHaveLength(0);
         });
 
+        it('answers 413 with a usable reason when the whole body is too large', async () => {
+            // Past the JSON body limit, so the parser rejects before the route
+            // ever sees an attachment field. This used to surface as a 500.
+            const response = await post(
+                validBody({
+                    attachment: {
+                        filename: 'huge.png',
+                        contentType: 'image/png',
+                        content: 'A'.repeat(4 * 1024 * 1024),
+                    },
+                }),
+            );
+
+            expect(response.status).toBe(413);
+            expect((response.body.error as { message: string }).message).toMatch(/too large/i);
+            expect(resendCalls()).toHaveLength(0);
+        });
+
         it('strips path separators from the filename', async () => {
             await post(
                     validBody({

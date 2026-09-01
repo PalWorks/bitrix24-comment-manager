@@ -193,6 +193,12 @@ and attachment types are an allowlist. A deployment that sets none of
 `RESEND_API_KEY`, `SUPPORT_FROM_EMAIL` and `SUPPORT_TO_EMAIL` answers 503 and
 sends nothing, which is the normal state for a self hosted instance.
 
+Setting `SUPPORT_ONLY=1` runs a process as a support mailbox and nothing else,
+with the Bitrix24 and database requirements lifted and the comment routes
+unmounted. That is what the publisher of a build runs so the Get help form has
+somewhere to post; see
+[docs/deployment/docker.md](docs/deployment/docker.md#running-a-support-mailbox-only).
+
 ### Authorization chain
 
 `POST /api/comments` passes through nine checks in order. Each is a separate
@@ -229,6 +235,7 @@ extension/
   options/             configuration and activity log
   shared/              settings, constants, message types, types
 docker-compose.yml     Backend and MySQL, for a one command deployment
+docker-compose.support.yml  Support mailbox only, for the build's publisher
 deploy/php-proxy/      Optional front door for shared hosting
 docs/                  Setup, deployment, operations
 tests/                 unit, integration, load

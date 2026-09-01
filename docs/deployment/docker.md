@@ -116,3 +116,33 @@ docker compose exec db \
   and `SUPPORT_TO_EMAIL` only matter for the deployment that answers the
   extension's Get help form. Leave them empty and the support endpoint stays
   off. Setting some but not all of them is rejected at startup.
+
+## Running a support mailbox only
+
+The extension's Get help form posts to a server the *publisher* of the build
+runs, not to the server each team runs. That instance answers support mail and
+nothing else, so it needs no Bitrix24 application, no portal and no database:
+
+```bash
+cp .env.support.example .env.support
+# fill in the Resend key, the two addresses, and the extension ID
+docker compose -f docker-compose.support.yml --env-file .env.support up -d
+```
+
+`SUPPORT_ONLY=1` lifts the Bitrix24 and database requirements and stops `/auth`
+and `/api` being mounted; they answer 503 with a reason rather than a 404 that
+reads like a wrong URL. It does not lift the mailbox requirement: an instance in
+this mode with no mailbox would start and do nothing, so it refuses to start.
+
+Two things about the addresses:
+
+- **`SUPPORT_FROM_EMAIL` must be on a domain verified in Resend**, which is
+  normally a sending subdomain like `mail.example.com` rather than your root
+  domain. It needs no inbox. Replies reach the reporter through `Reply-To`, so
+  only bounces would ever arrive there.
+- **`SUPPORT_TO_EMAIL` does need a real inbox**, because that is where every
+  support message lands.
+
+Set `CORS_ORIGINS` to the published extension's ID. Left open, any page on the
+web could post to your mailbox, and the rate limit is the only thing between
+that and a full inbox.

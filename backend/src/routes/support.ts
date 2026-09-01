@@ -19,7 +19,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import express from 'express';
 import { loadConfig, AppConfig } from '../config.js';
-import { BadRequestError } from '../utils/errors.js';
+import { AppError, BadRequestError } from '../utils/errors.js';
 import { createIpRateLimiter } from '../middleware/rateLimiter.js';
 import {
     isSupportConfigured,
@@ -80,7 +80,25 @@ function parseJsonBody(req: Request, res: Response, next: NextFunction): void {
         const limit = Math.ceil(getConfig().supportMaxAttachmentBytes * 1.4) + 64 * 1024;
         jsonParser = express.json({ limit });
     }
-    jsonParser(req, res, next);
+
+    jsonParser(req, res, (error?: unknown) => {
+        // A body over the limit is the ordinary consequence of attaching too
+        // large a file. Left to the generic handler it surfaces as a 500 and an
+        // "unexpected error", which tells the person nothing about the file
+        // they just chose.
+        if (error && (error as { type?: string }).type === 'entity.too.large') {
+            const limitMb = Math.floor(getConfig().supportMaxAttachmentBytes / (1024 * 1024));
+            next(
+                new AppError(
+                    413,
+                    'PAYLOAD_TOO_LARGE',
+                    `That message is too large. Attachments are limited to ${limitMb} MB.`,
+                ),
+            );
+            return;
+        }
+        next(error);
+    });
 }
 
 const supportRateLimiter = createIpRateLimiter(3, 60 * 60_000, 'support');
@@ -187,8 +205,6 @@ function parseContext(raw: unknown): Record<string, string> {
 
 export const supportRouter = Router();
 
-supportRouter.use(parseJsonBody);
-
 /**
  * Lets the options page decide whether to offer the form at all, and what
  * attachment size to enforce client side, without attempting a send first.
@@ -206,6 +222,7 @@ supportRouter.get('/config', (_req: Request, res: Response) => {
 supportRouter.post(
     '/',
     supportRateLimiter,
+    parseJsonBody,
     async (req: Request, res: Response, next: NextFunction) => {
         try {
             const body = (req.body ?? {}) as Record<string, unknown>;

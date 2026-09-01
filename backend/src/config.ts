@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { logger } from './utils/logger.js';
 
 export interface AppConfig {
@@ -36,6 +37,17 @@ export interface AppConfig {
     supportToEmail: string;
     /** Largest decoded attachment accepted on the support endpoint. */
     supportMaxAttachmentBytes: number;
+    /**
+     * Runs this process as a support mailbox and nothing else.
+     *
+     * The support form has to reach a server the publisher runs, which is not
+     * the server any individual user runs. That instance has no Bitrix24
+     * application, no portal and no audit log, so demanding those would force
+     * an operator to invent credentials that are never used, and leave a
+     * half wired auth flow answering requests. In this mode the Bitrix24 and
+     * database requirements are lifted and the comment routes are not mounted.
+     */
+    supportOnly: boolean;
 }
 
 function requireEnv(key: string): string {
@@ -57,7 +69,11 @@ function optionalEnv(key: string, defaultValue: string): string {
  * single portal shorthand and is used when the list is not set, which keeps
  * existing single portal deployments working with no configuration change.
  */
-function parsePortalList(allowedPortals: string, portalDomain: string): string[] {
+function parsePortalList(
+    allowedPortals: string,
+    portalDomain: string,
+    required = true,
+): string[] {
     const source = allowedPortals.trim() || portalDomain.trim();
 
     const entries = source
@@ -65,7 +81,7 @@ function parsePortalList(allowedPortals: string, portalDomain: string): string[]
         .map((entry) => entry.trim().toLowerCase())
         .filter((entry) => entry.length > 0);
 
-    if (entries.length === 0) {
+    if (entries.length === 0 && required) {
         throw new Error(
             'No Bitrix24 portal configured. Set BITRIX24_ALLOWED_PORTALS (comma separated) or BITRIX24_PORTAL_DOMAIN.',
         );
@@ -125,18 +141,30 @@ export function isPortalAllowed(host: string, allowed: string[]): boolean {
  *     deployment needs, and is tracked in the README roadmap.
  */
 export function loadConfig(): AppConfig {
+    const supportOnly = /^(1|true|yes)$/i.test(optionalEnv('SUPPORT_ONLY', '').trim());
+
+    // In support only mode nothing signs or verifies a JWT, so requiring a
+    // secret would be configuration for its own sake. A random one keeps the
+    // type honest and fails loudly if anything ever does try to sign with it
+    // across a restart.
+    const requireOrSupportOnly = (key: string): string =>
+        supportOnly ? optionalEnv(key, '') : requireEnv(key);
+
     const config: AppConfig = {
         port: parseInt(optionalEnv('PORT', '3000'), 10),
         nodeEnv: optionalEnv('NODE_ENV', 'development'),
         backendUrl: optionalEnv('BACKEND_URL', 'http://localhost:3000'),
-        jwtSecret: requireEnv('JWT_SECRET'),
+        jwtSecret: supportOnly
+            ? optionalEnv('JWT_SECRET', randomBytes(32).toString('hex'))
+            : requireEnv('JWT_SECRET'),
         jwtExpirySeconds: parseInt(optionalEnv('JWT_EXPIRY_SECONDS', '3600'), 10),
-        bitrix24ClientId: requireEnv('BITRIX24_CLIENT_ID'),
-        bitrix24ClientSecret: requireEnv('BITRIX24_CLIENT_SECRET'),
+        bitrix24ClientId: requireOrSupportOnly('BITRIX24_CLIENT_ID'),
+        bitrix24ClientSecret: requireOrSupportOnly('BITRIX24_CLIENT_SECRET'),
         bitrix24PortalDomain: optionalEnv('BITRIX24_PORTAL_DOMAIN', '').trim().toLowerCase(),
         bitrix24AllowedPortals: parsePortalList(
             optionalEnv('BITRIX24_ALLOWED_PORTALS', ''),
             optionalEnv('BITRIX24_PORTAL_DOMAIN', ''),
+            !supportOnly,
         ),
         corsOrigins: optionalEnv('CORS_ORIGINS', '*').split(',').map((s) => s.trim()),
         databaseUrl: optionalEnv('DATABASE_URL', ''),
@@ -150,17 +178,18 @@ export function loadConfig(): AppConfig {
             optionalEnv('SUPPORT_MAX_ATTACHMENT_BYTES', String(5 * 1024 * 1024)),
             10,
         ),
+        supportOnly,
     };
 
     if (config.nodeEnv === 'production' && config.corsOrigins.includes('*')) {
         logger.warn('CORS_ORIGINS is set to wildcard (*) in production. Set explicit origins.');
     }
 
-    if (config.nodeEnv === 'production' && !config.databaseUrl) {
+    if (config.nodeEnv === 'production' && !config.supportOnly && !config.databaseUrl) {
         throw new Error('DATABASE_URL is required in production.');
     }
 
-    if (config.nodeEnv === 'production' && !config.tokenEncryptionKey) {
+    if (config.nodeEnv === 'production' && !config.supportOnly && !config.tokenEncryptionKey) {
         throw new Error(
             'TOKEN_ENCRYPTION_KEY is required in production. Generate one with: openssl rand -hex 32',
         );
@@ -179,6 +208,18 @@ export function loadConfig(): AppConfig {
         throw new Error(
             'Support mail is half configured. Set all of RESEND_API_KEY, SUPPORT_FROM_EMAIL and SUPPORT_TO_EMAIL, or none of them.',
         );
+    }
+
+    // The mode exists to answer the support form, so a support only instance
+    // with no mailbox would start up and do nothing at all.
+    if (config.supportOnly && !supportFields.every(Boolean)) {
+        throw new Error(
+            'SUPPORT_ONLY is set but no mailbox is configured. Set RESEND_API_KEY, SUPPORT_FROM_EMAIL and SUPPORT_TO_EMAIL.',
+        );
+    }
+
+    if (config.supportOnly) {
+        logger.info('Running in support only mode. Comment and auth routes are not served.');
     }
 
     if (config.bitrix24AllowedPortals.includes('*')) {

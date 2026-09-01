@@ -1,0 +1,36 @@
+# A support mailbox and nothing else.
+#
+#   cp .env.support.example .env.support
+#   # fill in the Resend key and the two addresses
+#   docker compose -f docker-compose.support.yml --env-file .env.support up -d
+#
+# This is what the publisher of a build runs so the extension's Get help form
+# has somewhere to post. It has no Bitrix24 application, no portal and no
+# database, because a contact form needs none of those: /auth and /api answer
+# 503 with a reason, and only /health, /readiness and /support do any work.
+#
+# It is not what a team running the extension deploys. For that, use
+# docker-compose.yml, which brings up the full backend and its database.
+
+services:
+  support:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      SUPPORT_ONLY: '1'
+      RESEND_API_KEY: ${RESEND_API_KEY:?from resend.com, with send permission}
+      SUPPORT_FROM_EMAIL: ${SUPPORT_FROM_EMAIL:?must be on a domain verified in Resend}
+      SUPPORT_TO_EMAIL: ${SUPPORT_TO_EMAIL:?the inbox you actually read}
+      SUPPORT_MAX_ATTACHMENT_BYTES: ${SUPPORT_MAX_ATTACHMENT_BYTES:-5242880}
+      CORS_ORIGINS: ${CORS_ORIGINS:?the extension IDs allowed to post, comma separated}
+    ports:
+      - '${BIND_ADDRESS:-127.0.0.1}:3000:3000'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
