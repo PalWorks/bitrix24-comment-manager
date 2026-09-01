@@ -9,6 +9,7 @@ import { authRouter } from './routes/auth.js';
 import { leadsRouter } from './routes/leads.js';
 import { commentsRouter } from './routes/comments.js';
 import { activityRouter } from './routes/activity.js';
+import { supportRouter } from './routes/support.js';
 import { shutdownPool, getPool, drainPendingWrites } from './services/auditLogger.js';
 import { stopCleanupTimers } from './services/tokenService.js';
 import { stopPruneTimer } from './middleware/rateLimiter.js';
@@ -44,6 +45,11 @@ app.use(
         allowedHeaders: ['Content-Type', 'Authorization'],
     }),
 );
+// Mounted ahead of the global parser: the support route accepts a base64
+// attachment and installs its own, larger, JSON limit. Everything else stays
+// on the 100 kB default.
+app.use('/support', supportRouter);
+
 app.use(express.json());
 
 app.get('/health', (_req: Request, res: Response) => {

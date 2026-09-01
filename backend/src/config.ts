@@ -24,6 +24,18 @@ export interface AppConfig {
     tokenEncryptionKey: string;
     maxCommentLength: number;
     duplicateWindowSeconds: number;
+    /**
+     * Resend API key. Empty disables the support endpoint, which is the
+     * correct default for a self hosted instance that has no mailbox of its
+     * own to deliver to.
+     */
+    resendApiKey: string;
+    /** Verified sender. Fixed by configuration, never taken from a request. */
+    supportFromEmail: string;
+    /** Where support messages land. Fixed by configuration. */
+    supportToEmail: string;
+    /** Largest decoded attachment accepted on the support endpoint. */
+    supportMaxAttachmentBytes: number;
 }
 
 function requireEnv(key: string): string {
@@ -131,6 +143,13 @@ export function loadConfig(): AppConfig {
         tokenEncryptionKey: optionalEnv('TOKEN_ENCRYPTION_KEY', ''),
         maxCommentLength: parseInt(optionalEnv('MAX_COMMENT_LENGTH', '5000'), 10),
         duplicateWindowSeconds: parseInt(optionalEnv('DUPLICATE_WINDOW_SECONDS', '300'), 10),
+        resendApiKey: optionalEnv('RESEND_API_KEY', '').trim(),
+        supportFromEmail: optionalEnv('SUPPORT_FROM_EMAIL', '').trim(),
+        supportToEmail: optionalEnv('SUPPORT_TO_EMAIL', '').trim(),
+        supportMaxAttachmentBytes: parseInt(
+            optionalEnv('SUPPORT_MAX_ATTACHMENT_BYTES', String(5 * 1024 * 1024)),
+            10,
+        ),
     };
 
     if (config.nodeEnv === 'production' && config.corsOrigins.includes('*')) {
@@ -149,6 +168,17 @@ export function loadConfig(): AppConfig {
 
     if (config.tokenEncryptionKey && !/^[0-9a-fA-F]{64}$/.test(config.tokenEncryptionKey)) {
         throw new Error('TOKEN_ENCRYPTION_KEY must be exactly 64 hexadecimal characters (32 bytes).');
+    }
+
+    const supportFields = [
+        config.resendApiKey,
+        config.supportFromEmail,
+        config.supportToEmail,
+    ];
+    if (supportFields.some(Boolean) && !supportFields.every(Boolean)) {
+        throw new Error(
+            'Support mail is half configured. Set all of RESEND_API_KEY, SUPPORT_FROM_EMAIL and SUPPORT_TO_EMAIL, or none of them.',
+        );
     }
 
     if (config.bitrix24AllowedPortals.includes('*')) {
