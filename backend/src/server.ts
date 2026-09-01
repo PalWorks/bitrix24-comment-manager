@@ -18,6 +18,11 @@ const config = loadConfig();
 
 const app = express();
 
+// Must be set before any middleware reads req.ip. The value is a hop count, so
+// Express takes the address that many entries from the right of
+// X-Forwarded-For: entries a client prepends itself are never reached.
+app.set('trust proxy', config.trustProxy);
+
 app.use(
     helmet({
         hsts: {

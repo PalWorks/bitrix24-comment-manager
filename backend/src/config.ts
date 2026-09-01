@@ -48,6 +48,18 @@ export interface AppConfig {
      * database requirements are lifted and the comment routes are not mounted.
      */
     supportOnly: boolean;
+    /**
+     * How many reverse proxies sit in front of this process.
+     *
+     * Without it Express reports the proxy's address as req.ip, so every
+     * client shares one bucket and the per IP rate limiters stop limiting
+     * anyone individually while limiting everyone collectively. It is a hop
+     * count rather than a boolean because a client can prepend entries to
+     * X-Forwarded-For but cannot affect the rightmost ones: trusting exactly
+     * the number of proxies that really exist is what makes the header safe
+     * to read. Too high and a client can forge its own address.
+     */
+    trustProxy: number;
 }
 
 function requireEnv(key: string): string {
@@ -179,6 +191,7 @@ export function loadConfig(): AppConfig {
             10,
         ),
         supportOnly,
+        trustProxy: Math.max(0, parseInt(optionalEnv('TRUST_PROXY', '0'), 10) || 0),
     };
 
     if (config.nodeEnv === 'production' && config.corsOrigins.includes('*')) {
@@ -220,6 +233,12 @@ export function loadConfig(): AppConfig {
 
     if (config.supportOnly) {
         logger.info('Running in support only mode. Comment and auth routes are not served.');
+    }
+
+    if (config.nodeEnv === 'production' && config.trustProxy === 0) {
+        logger.warn(
+            'TRUST_PROXY is 0. If a reverse proxy fronts this server, every client shares one rate limit bucket. Set it to the number of proxies in front.',
+        );
     }
 
     if (config.bitrix24AllowedPortals.includes('*')) {

@@ -21,6 +21,9 @@ services:
       NODE_ENV: production
       PORT: 3000
       SUPPORT_ONLY: '1'
+      # Number of reverse proxies in front. Without it every client shares one
+      # rate limit bucket, so the limiter stops protecting the mailbox.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
       RESEND_API_KEY: ${RESEND_API_KEY:?from resend.com, with send permission}
       SUPPORT_FROM_EMAIL: ${SUPPORT_FROM_EMAIL:?must be on a domain verified in Resend}
       SUPPORT_TO_EMAIL: ${SUPPORT_TO_EMAIL:?the inbox you actually read}

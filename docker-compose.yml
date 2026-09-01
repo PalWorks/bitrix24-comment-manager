@@ -49,6 +49,9 @@ services:
       BITRIX24_CLIENT_SECRET: ${BITRIX24_CLIENT_SECRET:?from your Bitrix24 local application}
       BITRIX24_ALLOWED_PORTALS: ${BITRIX24_ALLOWED_PORTALS:?comma separated portal hostnames}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      # Number of reverse proxies in front. The compose file publishes on
+      # loopback expecting one, so the default matches that shape.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
       MAX_COMMENT_LENGTH: ${MAX_COMMENT_LENGTH:-5000}
       DUPLICATE_WINDOW_SECONDS: ${DUPLICATE_WINDOW_SECONDS:-300}
       # Optional. Leave unset unless this deployment also answers support mail.

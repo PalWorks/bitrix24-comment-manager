@@ -96,7 +96,11 @@ describe('Config Validation', () => {
             const { loadConfig } = await import('../../../backend/src/config');
             loadConfig();
 
-            expect(warnSpy).not.toHaveBeenCalled();
+            // Asserts the absence of the CORS warning specifically. Asserting
+            // that nothing at all was logged made this test fail for unrelated
+            // warnings, which is a failure about the wrong subject.
+            const warnings = warnSpy.mock.calls.map(([message]) => String(message));
+            expect(warnings.some((message) => /CORS_ORIGINS/.test(message))).toBe(false);
         });
 
         it('should not log a warning in development even with wildcard CORS', async () => {
