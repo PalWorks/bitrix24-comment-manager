@@ -11,13 +11,27 @@ application code, so the site can be edited without touching a release.
 ## Structure
 
 ```
-index.html          the whole site, styles inline
-assets/             logo at 64, 192, and 512 px
-.nojekyll           serve files as-is, no Jekyll build
+index.html            overview, with the support form as a section
+support/index.html    the support form on its own URL
+privacy/index.html    privacy policy
+terms/index.html      terms of use
+assets/site.css       every page's styles
+assets/support-form.js  the support form, shared by both pages that carry it
+assets/               logo at 64, 192, and 512 px
+.nojekyll             serve files as-is, no Jekyll build
 ```
 
-Everything is static. There is no build step, no dependency, and no JavaScript:
-open `index.html` in a browser and what you see is what deploys.
+Everything is static. There is no build step and no dependency: open any
+`index.html` in a browser and what you see is what deploys.
+
+The stylesheet and the form script are shared files rather than inline copies.
+Four inline copies of a palette drift apart, and the drift shows up as one page
+in last month's colours.
+
+The support form posts to `https://b24.palworks.ai/support`, the same endpoint
+the Chrome extension's Get help form uses. That server allows this origin
+explicitly, so a fork serving these files from a different domain will get a
+CORS refusal until its own endpoint is configured.
 
 ## Editing
 

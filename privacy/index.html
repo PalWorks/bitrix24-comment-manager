@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy policy</title>
+<meta name="description" content="What Bitrix24 Comment Manager does and does not collect. No analytics, no tracking, no cookies.">
+<link rel="icon" type="image/png" sizes="192x192" href="../assets/logo-192.png">
+<link rel="apple-touch-icon" href="../assets/logo-192.png">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Privacy policy">
+<meta property="og:description" content="What Bitrix24 Comment Manager does and does not collect. No analytics, no tracking, no cookies.">
+<meta property="og:image" content="../assets/logo-512.png">
+<meta name="twitter:card" content="summary">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;800&display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+
+<header class="site-header">
+    <div class="wrap">
+        <a class="brand" href="../">
+            <img src="../assets/logo-192.png" alt="">
+            Bitrix24 Comment Manager
+        </a>
+        <nav class="header-links">
+            <a class="hide-sm" href="../#what">What it does</a>
+            <a class="hide-sm" href="../#how">How it works</a>
+            <a href="../support/">Support</a>
+            <a href="https://github.com/PalWorks/bitrix24-comment-manager">GitHub</a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <div class="wrap">
+        <div class="doc">
+            <a class="back-link" href="../">Back to the overview</a>
+            <div class="doc-head">
+                <h1>Privacy policy</h1>
+                <p class="doc-meta">Last updated 1 September 2026</p>
+            </div>
+
+            <div class="callout">
+                <p>
+                    <strong>The short version.</strong> Using the extension sends us nothing.
+                    Your comments, your leads and your Bitrix24 credentials go to a backend
+                    you run, not to us. The only time we receive anything is when you choose
+                    to write to us through the support form. There is no analytics, no
+                    tracking and no advertising anywhere in this project.
+                </p>
+            </div>
+
+            <div class="doc-toc">
+                <p>On this page</p>
+                <ol>
+                    <li><a href="#who">Who we are</a></li>
+                    <li><a href="#extension">What the extension stores</a></li>
+                    <li><a href="#backend">What goes to your backend</a></li>
+                    <li><a href="#support">What we receive</a></li>
+                    <li><a href="#website">This website</a></li>
+                    <li><a href="#processors">Who else is involved</a></li>
+                    <li><a href="#retention">How long we keep it</a></li>
+                    <li><a href="#rights">Your rights</a></li>
+                    <li><a href="#children">Children</a></li>
+                    <li><a href="#changes">Changes</a></li>
+                </ol>
+            </div>
+
+            <h2 id="who">1. Who we are</h2>
+            <p>
+                Bitrix24 Comment Manager is an open source project published by PalWorks.
+                This policy covers the Chrome extension, this website, and the support
+                service at <code>b24.palworks.ai</code>. Write to
+                <a href="mailto:support@palworks.ai">support@palworks.ai</a> with any
+                question about it.
+            </p>
+            <p>
+                It does <strong>not</strong> cover the backend server that you or your
+                administrator deploy. You run that, you control what it stores, and you
+                are its data controller. What it holds is described in section 3 so you
+                know what you are responsible for.
+            </p>
+
+            <h2 id="extension">2. What the extension stores on your computer</h2>
+            <p>
+                Everything in this section stays in your browser profile. None of it is
+                transmitted to us.
+            </p>
+            <div class="table-scroll">
+            <table class="doc-table">
+                <thead>
+                    <tr><th>What</th><th>Where</th><th>Why</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Your backend URL</td>
+                        <td><code>chrome.storage.local</code></td>
+                        <td>So the extension knows which server to talk to</td>
+                    </tr>
+                    <tr>
+                        <td>Bitrix24 portals you added</td>
+                        <td><code>chrome.storage.local</code></td>
+                        <td>So the extension activates on your portal</td>
+                    </tr>
+                    <tr>
+                        <td>Your session token</td>
+                        <td><code>chrome.storage.session</code></td>
+                        <td>
+                            To prove who you are to your own backend. Memory backed, cleared
+                            when the browser closes, and unreachable from any web page
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Comments made this session</td>
+                        <td><code>chrome.storage.session</code></td>
+                        <td>So the popup can still show them after it is closed and reopened</td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+            <p>
+                The extension never holds your Bitrix24 password or your Bitrix24 API
+                credentials. Those stay on the server side.
+            </p>
+
+            <h2 id="backend">3. What goes to your backend</h2>
+            <p>
+                When you comment on a lead, the request goes to the backend at the URL you
+                configured. That server is operated by you or your organisation. We have no
+                access to it and receive no copy of anything it handles.
+            </p>
+            <p>That backend records, in its audit log:</p>
+            <ul>
+                <li>which agent performed the action, and on which lead</li>
+                <li>what the action was, and whether it succeeded</li>
+                <li>when it happened</li>
+                <li>a SHA-256 hash of the comment text</li>
+            </ul>
+            <p>
+                <strong>The text of your comments is never stored in the audit log</strong>,
+                only that hash, which is enough to detect a duplicate but cannot be turned
+                back into the comment. The comment itself goes to Bitrix24, where it lives
+                under Bitrix24's own terms and privacy policy.
+            </p>
+            <p>
+                That backend also stores the Bitrix24 access and refresh tokens for each
+                connected agent. They are encrypted with AES-256-GCM before they are
+                written to its database.
+            </p>
+
+            <h2 id="support">4. What we actually receive</h2>
+            <p>
+                One thing only: what you type into the support form, on this site or inside
+                the extension, at the moment you press send.
+            </p>
+            <ul>
+                <li>your name, email address, and phone number if you give one</li>
+                <li>the topic you chose and the message you wrote</li>
+                <li>a file, if you attach one</li>
+                <li>
+                    a small amount of context to help us reproduce the problem: the
+                    extension version, whether a backend is configured, the page you wrote
+                    from, and your browser's user agent string
+                </li>
+            </ul>
+            <p>
+                That context deliberately excludes anything about your CRM. No portal
+                contents, no lead data, no comment text, and no token is ever attached.
+            </p>
+            <p>
+                We use it to answer you and to fix what you reported. We do not sell it, we
+                do not share it for advertising, and we do not add you to a marketing list
+                unless you asked to be told when hosted plans open, which is a separate,
+                clearly labelled action.
+            </p>
+            <p>
+                Our support server keeps a standard web access log, which records the IP
+                address and the path of each request. It exists so that abuse of a public,
+                unauthenticated form can be investigated. It rotates automatically and is
+                capped in size, so it is not a long term record.
+            </p>
+
+            <h2 id="website">5. This website</h2>
+            <p>
+                This site is static. It sets <strong>no cookies</strong>, runs
+                <strong>no analytics</strong>, and contains no advertising or tracking
+                pixels. The only script on it is the support form on this domain.
+            </p>
+            <p>Two things happen simply because a browser loads a page:</p>
+            <ul>
+                <li>
+                    <strong>GitHub Pages</strong> serves these files, so GitHub receives
+                    your IP address and request details, as described in the GitHub Privacy
+                    Statement.
+                </li>
+                <li>
+                    <strong>Google Fonts</strong> serves the typeface, so Google receives
+                    your IP address when the font file is fetched.
+                </li>
+            </ul>
+
+            <h2 id="processors">6. Who else is involved</h2>
+            <div class="table-scroll">
+            <table class="doc-table">
+                <thead><tr><th>Service</th><th>What it does</th><th>What it sees</th></tr></thead>
+                <tbody>
+                    <tr><td>GitHub Pages</td><td>Serves this website</td><td>Your IP and request details</td></tr>
+                    <tr><td>Google Fonts</td><td>Serves the typeface</td><td>Your IP when the font loads</td></tr>
+                    <tr><td>Cloudflare</td><td>DNS for palworks.ai</td><td>DNS queries</td></tr>
+                    <tr><td>Oracle Cloud</td><td>Hosts the support service</td><td>Traffic to that server</td></tr>
+                    <tr><td>Resend</td><td>Delivers support messages as email</td><td>The message you sent, so it can be delivered</td></tr>
+                </tbody>
+            </table>
+            </div>
+            <p>
+                Notably absent: any analytics, attribution, session recording or
+                advertising provider. There are none.
+            </p>
+
+            <h2 id="retention">7. How long we keep it</h2>
+            <p>
+                Support messages stay in our mailbox for as long as they are useful for
+                support history, and you can ask us to delete yours at any time. Server
+                access logs rotate on a fixed size and count, so old entries are overwritten
+                rather than accumulating indefinitely.
+            </p>
+            <p>
+                Anything stored by your own backend is kept for as long as you configure.
+                The audit log ships with a retention job you control.
+            </p>
+
+            <h2 id="rights">8. Your rights</h2>
+            <p>
+                Depending on where you live you may have the right to ask for a copy of what
+                we hold about you, to have it corrected, or to have it deleted. Because the
+                only thing we hold is your correspondence, that is a short conversation.
+                Email <a href="mailto:support@palworks.ai">support@palworks.ai</a> and we
+                will act on it.
+            </p>
+            <p>
+                For anything held by your employer's backend, ask your administrator: we
+                cannot reach that data.
+            </p>
+
+            <h2 id="children">9. Children</h2>
+            <p>
+                This is a business tool for CRM teams. It is not directed at children and we
+                do not knowingly collect anything from them.
+            </p>
+
+            <h2 id="changes">10. Changes</h2>
+            <p>
+                If this policy changes, the date at the top changes with it, and the edit is
+                visible in this site's
+                <a href="https://github.com/PalWorks/bitrix24-comment-manager/commits/gh-pages">public commit history</a>. There is no
+                version of this document you cannot see.
+            </p>
+        </div>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <div class="wrap">
+        <div class="footer-grid">
+            <a class="brand" href="../">
+                <img src="../assets/logo-192.png" alt="">
+                Bitrix24 Comment Manager
+            </a>
+            <nav class="footer-links">
+                <a href="https://github.com/PalWorks/bitrix24-comment-manager">Source</a>
+                <a href="https://github.com/PalWorks/bitrix24-comment-manager/blob/main/docs/SETUP.md">Setup</a>
+                <a href="../support/">Support</a>
+                <a href="../privacy/">Privacy</a>
+                <a href="../terms/">Terms</a>
+                <a href="https://github.com/PalWorks/bitrix24-comment-manager/issues">Report an issue</a>
+            </nav>
+        </div>
+        <p class="fine">
+            An independent open source project. Not affiliated with, endorsed by, or
+            sponsored by Bitrix24. Bitrix24 is a trademark of its respective owner.
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>

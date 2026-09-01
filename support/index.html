@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support</title>
+<meta name="description" content="Get help with Bitrix24 Comment Manager. Send us a message and we will reply by email.">
+<link rel="icon" type="image/png" sizes="192x192" href="../assets/logo-192.png">
+<link rel="apple-touch-icon" href="../assets/logo-192.png">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Support">
+<meta property="og:description" content="Get help with Bitrix24 Comment Manager. Send us a message and we will reply by email.">
+<meta property="og:image" content="../assets/logo-512.png">
+<meta name="twitter:card" content="summary">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;800&display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+
+<header class="site-header">
+    <div class="wrap">
+        <a class="brand" href="../">
+            <img src="../assets/logo-192.png" alt="">
+            Bitrix24 Comment Manager
+        </a>
+        <nav class="header-links">
+            <a class="hide-sm" href="../#what">What it does</a>
+            <a class="hide-sm" href="../#how">How it works</a>
+            <a href="../support/">Support</a>
+            <a href="https://github.com/PalWorks/bitrix24-comment-manager">GitHub</a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <div class="wrap">
+        <div class="doc">
+            <a class="back-link" href="../">Back to the overview</a>
+            <div class="doc-head">
+                <h1>Support</h1>
+                <p class="doc-meta">We read every message and reply by email.</p>
+            </div>
+
+            <p>
+                Tell us what happened, what you expected, and what you saw instead. A
+                screenshot or a log file makes almost every problem faster to solve, so
+                attach one if you have it.
+            </p>
+
+            <div class="callout">
+                <p>
+                    <strong>Before you write, two things solve most problems.</strong>
+                    If the extension cannot reach your backend, check the Backend URL on
+                    the options page is the exact origin with no trailing path. If your
+                    portal is not on <code>bitrix24.com</code>, add it under Bitrix24
+                    portals and approve the permission Chrome asks for.
+                </p>
+            </div>
+
+            <form id="support-form" novalidate>
+    <div class="form-grid">
+        <div class="form-row form-row-2">
+            <div class="field">
+                <label for="sf-name">Your name</label>
+                <input id="sf-name" name="name" type="text" autocomplete="name"
+                       maxlength="80" required placeholder="Jane Cooper">
+            </div>
+            <div class="field">
+                <label for="sf-email">Your email</label>
+                <input id="sf-email" name="email" type="email" autocomplete="email"
+                       required placeholder="you@company.com">
+            </div>
+        </div>
+
+        <div class="form-row form-row-2">
+            <div class="field">
+                <label for="sf-phone">Phone (optional)</label>
+                <input id="sf-phone" name="phone" type="tel" autocomplete="tel"
+                       maxlength="24" placeholder="+971 50 123 4567">
+                <span class="hint">Include the country code.</span>
+            </div>
+            <div class="field">
+                <label for="sf-category">Topic</label>
+                <select id="sf-category" name="category">
+                    <option value="bug">Something is broken</option>
+                    <option value="question">A question about setup</option>
+                    <option value="billing">Hosting and billing</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="sf-message">What happened</label>
+            <textarea id="sf-message" name="message" rows="6" maxlength="5000" required
+                      placeholder="What you did, what you expected, and what happened instead."></textarea>
+            <span class="counter" id="sf-counter">0 / 5000</span>
+        </div>
+
+        <div class="field">
+            <label for="sf-file">Attachment (optional)</label>
+            <input id="sf-file" name="file" type="file"
+                   accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain,application/json,application/zip">
+            <span class="hint">PNG, JPEG, GIF, WebP, PDF, text, JSON or zip, up to 5 MB.</span>
+        </div>
+
+        <div class="trap" aria-hidden="true">
+            <label for="sf-company">Company</label>
+            <input id="sf-company" name="company" type="text" tabindex="-1" autocomplete="off">
+        </div>
+
+        <div>
+            <button id="sf-submit" class="btn btn-primary" type="submit">Send message</button>
+        </div>
+
+        <p class="form-status" id="sf-status" role="status" hidden></p>
+    </div>
+</form>
+
+            <h2>Other ways to reach us</h2>
+            <p>
+                For anything about the code itself, a bug you can reproduce, or a feature
+                you want, the <a href="https://github.com/PalWorks/bitrix24-comment-manager/issues">issue tracker</a> is usually better
+                than email: it is public, searchable, and the next person with the same
+                problem finds the answer.
+            </p>
+            <p>
+                To report a security vulnerability, please follow
+                <a href="https://github.com/PalWorks/bitrix24-comment-manager/blob/main/SECURITY.md">SECURITY.md</a> rather than this
+                form or a public issue.
+            </p>
+            <p>
+                What we do with what you send is set out in the
+                <a href="../privacy/">privacy policy</a>.
+            </p>
+        </div>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <div class="wrap">
+        <div class="footer-grid">
+            <a class="brand" href="../">
+                <img src="../assets/logo-192.png" alt="">
+                Bitrix24 Comment Manager
+            </a>
+            <nav class="footer-links">
+                <a href="https://github.com/PalWorks/bitrix24-comment-manager">Source</a>
+                <a href="https://github.com/PalWorks/bitrix24-comment-manager/blob/main/docs/SETUP.md">Setup</a>
+                <a href="../support/">Support</a>
+                <a href="../privacy/">Privacy</a>
+                <a href="../terms/">Terms</a>
+                <a href="https://github.com/PalWorks/bitrix24-comment-manager/issues">Report an issue</a>
+            </nav>
+        </div>
+        <p class="fine">
+            An independent open source project. Not affiliated with, endorsed by, or
+            sponsored by Bitrix24. Bitrix24 is a trademark of its respective owner.
+        </p>
+    </div>
+</footer>
+
+<script src="../assets/support-form.js"></script>
+</body>
+</html>
