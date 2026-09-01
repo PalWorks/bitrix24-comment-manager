@@ -783,3 +783,7 @@ body {
   color: var(--md3-warning);
   letter-spacing: 0.1px;
 }
+/* Centres the trailing help link under the disconnect button. */
+.md3-center {
+    text-align: center;
+}

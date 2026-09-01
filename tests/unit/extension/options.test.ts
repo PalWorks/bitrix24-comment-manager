@@ -239,7 +239,7 @@ describe('options page', () => {
 
             expect(
                 (document.getElementById('current-plan-name') as HTMLElement).textContent,
-            ).toBe('Self hosted');
+            ).toBe('Self-Hosted');
             expect(
                 (document.getElementById('current-plan-detail') as HTMLElement).textContent,
             ).toContain('api.example.com');
@@ -331,8 +331,8 @@ describe('options page', () => {
             await import('../../../extension/options/options');
             await vi.runAllTimersAsync();
 
-            expect(tab('hosted').getAttribute('aria-selected')).toBe('true');
-            expect(panel('hosted').classList.contains('hidden')).toBe(false);
+            expect(tab('cloud').getAttribute('aria-selected')).toBe('true');
+            expect(panel('cloud').classList.contains('hidden')).toBe(false);
             expect(panel('selfhost').classList.contains('hidden')).toBe(true);
         });
 
@@ -345,7 +345,7 @@ describe('options page', () => {
             await vi.runAllTimersAsync();
 
             expect(tab('selfhost').getAttribute('aria-selected')).toBe('true');
-            expect(panel('hosted').classList.contains('hidden')).toBe(true);
+            expect(panel('cloud').classList.contains('hidden')).toBe(true);
         });
 
         it('shows exactly one panel when a tab is clicked', async () => {
@@ -356,15 +356,15 @@ describe('options page', () => {
             await import('../../../extension/options/options');
             await vi.runAllTimersAsync();
 
-            tab('deploy').click();
+            tab('cloud').click();
 
-            const visible = ['hosted', 'deploy', 'selfhost'].filter(
+            const visible = ['cloud', 'selfhost'].filter(
                 (name) => !panel(name).classList.contains('hidden'),
             );
-            expect(visible).toEqual(['deploy']);
-            expect(tab('deploy').getAttribute('aria-selected')).toBe('true');
-            expect(tab('deploy').tabIndex).toBe(0);
-            expect(tab('hosted').tabIndex).toBe(-1);
+            expect(visible).toEqual(['cloud']);
+            expect(tab('cloud').getAttribute('aria-selected')).toBe('true');
+            expect(tab('cloud').tabIndex).toBe(0);
+            expect(tab('selfhost').tabIndex).toBe(-1);
         });
 
         it('moves between tabs with the arrow keys', async () => {
@@ -375,18 +375,19 @@ describe('options page', () => {
             await import('../../../extension/options/options');
             await vi.runAllTimersAsync();
 
-            tab('hosted').click();
-            tab('hosted').dispatchEvent(
+            tab('cloud').click();
+            tab('cloud').dispatchEvent(
                 new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
             );
 
-            expect(tab('deploy').getAttribute('aria-selected')).toBe('true');
+            expect(tab('selfhost').getAttribute('aria-selected')).toBe('true');
 
-            tab('deploy').dispatchEvent(
+            // Two tabs, so ArrowLeft wraps straight back round.
+            tab('selfhost').dispatchEvent(
                 new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }),
             );
 
-            expect(tab('hosted').getAttribute('aria-selected')).toBe('true');
+            expect(tab('cloud').getAttribute('aria-selected')).toBe('true');
         });
 
         it('does not move the tab when the user saves a backend URL', async () => {
@@ -405,11 +406,16 @@ describe('options page', () => {
             await import('../../../extension/options/options');
             await vi.runAllTimersAsync();
 
-            (document.getElementById('tab-deploy') as HTMLButtonElement).click();
+            (document.getElementById('tab-cloud') as HTMLButtonElement).click();
             (document.getElementById('btn-save-backend') as HTMLButtonElement).click();
             await vi.runAllTimersAsync();
 
-            expect(tab('deploy').getAttribute('aria-selected')).toBe('true');
+            expect(tab('cloud').getAttribute('aria-selected')).toBe('true');
+        });
+
+        it('offers two routes, since deploying one and pointing at one are the same arrangement', () => {
+            expect(document.getElementById('tab-deploy')).toBeNull();
+            expect(document.querySelectorAll('.tabs .tab')).toHaveLength(2);
         });
     });
 

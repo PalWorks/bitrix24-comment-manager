@@ -93,20 +93,26 @@ const ALLOWED_ATTACHMENT_TYPES = [
     'application/zip',
 ];
 
+/**
+ * Two ways to get a backend, not three.
+ *
+ * Deploying one and pointing at one somebody already deployed are two moments
+ * in the same arrangement, not two arrangements: either way the server is
+ * yours. Splitting them made the strip look like a choice where none existed.
+ * The real fork is who operates it, so that is what the tabs name.
+ */
 const tabs = {
-    hosted: document.getElementById('tab-hosted') as HTMLButtonElement,
-    deploy: document.getElementById('tab-deploy') as HTMLButtonElement,
+    cloud: document.getElementById('tab-cloud') as HTMLButtonElement,
     selfhost: document.getElementById('tab-selfhost') as HTMLButtonElement,
 };
 
 const panels = {
-    hosted: document.getElementById('panel-hosted') as HTMLElement,
-    deploy: document.getElementById('panel-deploy') as HTMLElement,
+    cloud: document.getElementById('panel-cloud') as HTMLElement,
     selfhost: document.getElementById('panel-selfhost') as HTMLElement,
 };
 
 type TabName = keyof typeof tabs;
-const TAB_ORDER: TabName[] = ['hosted', 'deploy', 'selfhost'];
+const TAB_ORDER: TabName[] = ['cloud', 'selfhost'];
 
 const support = {
     section: document.getElementById('support-section') as HTMLElement,
@@ -391,7 +397,7 @@ async function loadSettings(): Promise<void> {
     // open on the tab that matches where they are. Only on load: once the user
     // has picked a tab, saving a URL must not move it under them.
     if (!tabSelectedByUser) {
-        selectTab(response.data.backendUrl ? 'selfhost' : 'hosted');
+        selectTab(response.data.backendUrl ? 'selfhost' : 'cloud');
     }
 }
 
@@ -562,7 +568,7 @@ function renderPlan(backendUrl: string): void {
         // would need to correct.
     }
 
-    elements.planName.textContent = 'Self hosted';
+    elements.planName.textContent = 'Self-Hosted';
     elements.planBadge.textContent = 'No billing';
     elements.planBadge.className = 'badge badge-neutral';
     elements.planDetail.textContent =

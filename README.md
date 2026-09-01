@@ -79,8 +79,8 @@ agent cannot bypass, and could not produce an audit log the agent cannot edit.
   allowlist.
 - **Runtime configuration**: point the extension at your backend from the options
   page. No rebuild needed.
-- **Three routes to a backend** offered in the options page: managed hosting,
-  a one command Docker deployment, or your own server.
+- **Two routes to a backend** offered in the options page: cloud hosted, which
+  we run, or self hosted, which you run.
 - **Options page in three sections**: Settings, Plans and billing, and Help,
   each deep linkable (`options.html#billing`).
 - **Built in support form** with attachments, delivered through Resend. Optional,
@@ -254,7 +254,7 @@ Deeper references: [ARCHITECTURE.md](ARCHITECTURE.md),
 npm install          # workspaces: covers both packages
 npm run lint
 npm run typecheck
-npm test             # 340 tests
+npm test             # 343 tests
 npm run test:coverage
 ```
 

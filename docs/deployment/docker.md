@@ -83,7 +83,7 @@ whether a request already arrived over TLS.
 
 ## 5. Point the extension at it
 
-Open the extension's options page, choose **Deploy your own**, and paste the
+Open the extension's options page, choose **Self-Hosted**, and paste the
 origin, for example `https://api.example.com`, into **Backend URL**. Then open
 the popup and connect your Bitrix24 account.
 

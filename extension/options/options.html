@@ -51,33 +51,40 @@
                     </div>
                     <div class="row-body">
                         <div class="tabs" role="tablist" aria-label="How to get a backend">
-                            <button class="tab" type="button" role="tab" id="tab-hosted" aria-controls="panel-hosted"
-                                aria-selected="false" tabindex="-1">Hosted</button>
-                            <button class="tab" type="button" role="tab" id="tab-deploy" aria-controls="panel-deploy"
-                                aria-selected="false" tabindex="-1">Deploy your own</button>
+                            <button class="tab" type="button" role="tab" id="tab-cloud" aria-controls="panel-cloud"
+                                aria-selected="false" tabindex="-1">Cloud-Hosted</button>
                             <button class="tab" type="button" role="tab" id="tab-selfhost"
-                                aria-controls="panel-selfhost" aria-selected="true" tabindex="0">Self hosted</button>
+                                aria-controls="panel-selfhost" aria-selected="true" tabindex="0">Self-Hosted</button>
                         </div>
 
-                        <div id="panel-hosted" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-hosted"
+                        <div id="panel-cloud" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-cloud"
                             tabindex="0">
                             <p class="panel-lead">
-                                We run the backend, you paste the URL we send you. Nothing to deploy
-                                and nothing to patch.
+                                We run the backend, you paste the URL we send you. Nothing to deploy,
+                                nothing to patch, and no server of your own to keep alive.
                             </p>
                             <p class="panel-note">
-                                Hosting is not open yet. The plans, what each one includes, and how to
-                                be told when it opens are all on the
+                                Not open yet. The plans, what each one includes, and how to be told
+                                when it opens are all on the
                                 <button class="btn-link" type="button" id="link-to-billing">Plans and billing</button>
                                 page.
                             </p>
                         </div>
 
-                        <div id="panel-deploy" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-deploy"
+                        <div id="panel-selfhost" class="tab-panel" role="tabpanel" aria-labelledby="tab-selfhost"
                             tabindex="0">
                             <p class="panel-lead">
-                                One command brings up the backend and its database on any machine with
-                                Docker, from a laptop to a five dollar VPS.
+                                You run the backend, so the audit log and the Bitrix24 credentials never
+                                leave your infrastructure.
+                            </p>
+                            <p class="panel-note">
+                                <strong>Already have one?</strong> Paste the origin your administrator
+                                gave you into the field below and you are done.
+                            </p>
+                            <p class="panel-note">
+                                <strong>Setting it up yourself?</strong> Register a Bitrix24 application
+                                first, following the setup guide, then bring the backend and its
+                                database up with one command:
                             </p>
                             <pre class="code-block"><code>git clone https://github.com/PalWorks/bitrix24-comment-manager
 cd bitrix24-comment-manager
@@ -88,19 +95,9 @@ docker compose up -d</code></pre>
                                 Put it behind a domain with HTTPS, then paste that origin below.
                             </p>
                             <p class="panel-links">
-                                <a id="link-deploy-docs" href="#" target="_blank" rel="noopener">Deployment guide</a>
-                            </p>
-                        </div>
-
-                        <div id="panel-selfhost" class="tab-panel" role="tabpanel" aria-labelledby="tab-selfhost"
-                            tabindex="0">
-                            <p class="panel-lead">
-                                Already have one? Paste the origin your administrator gave you. If you
-                                are the administrator, the setup guide walks through registering the
-                                Bitrix24 application and deploying the server yourself.
-                            </p>
-                            <p class="panel-links">
                                 <a id="link-setup-docs" href="#" target="_blank" rel="noopener">Setup guide</a>
+                                <span class="link-sep">|</span>
+                                <a id="link-deploy-docs" href="#" target="_blank" rel="noopener">Deployment guide</a>
                             </p>
                         </div>
 

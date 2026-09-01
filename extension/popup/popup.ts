@@ -721,4 +721,20 @@ elements.commentList.addEventListener('click', (event) => {
     }
 });
 
+/**
+ * Opens the Help section of the options page.
+ *
+ * chrome.runtime.openOptionsPage cannot carry a fragment, so the page is opened
+ * as a tab by URL instead. Without that the user lands on Settings and has to
+ * find Help, which is the moment they are least willing to go looking.
+ */
+function openHelp(): void {
+    void chrome.tabs.create({ url: chrome.runtime.getURL('options/options.html#help') });
+    window.close();
+}
+
+for (const button of document.querySelectorAll('[data-open-help]')) {
+    button.addEventListener('click', openHelp);
+}
+
 initialize();
