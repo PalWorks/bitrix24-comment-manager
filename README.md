@@ -81,6 +81,8 @@ agent cannot bypass, and could not produce an audit log the agent cannot edit.
   page. No rebuild needed.
 - **Three routes to a backend** offered in the options page: managed hosting,
   a one command Docker deployment, or your own server.
+- **Options page in three sections**: Settings, Plans and billing, and Help,
+  each deep linkable (`options.html#billing`).
 - **Built in support form** with attachments, delivered through Resend. Optional,
   and off unless a deployment configures a mailbox.
 - **Offline feedback** when the backend is unreachable.
@@ -252,7 +254,7 @@ Deeper references: [ARCHITECTURE.md](ARCHITECTURE.md),
 npm install          # workspaces: covers both packages
 npm run lint
 npm run typecheck
-npm test             # 306 tests
+npm test             # 340 tests
 npm run test:coverage
 ```
 

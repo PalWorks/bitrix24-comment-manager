@@ -47,10 +47,38 @@ const elements = {
     portalList: document.getElementById('portal-list') as HTMLUListElement,
     portalEmpty: document.getElementById('portal-empty') as HTMLElement,
     connectionBadge: document.getElementById('connection-badge') as HTMLElement,
+    appMain: document.getElementById('app-main') as HTMLElement,
+    activityRow: document.getElementById('row-activity') as HTMLElement,
+    planName: document.getElementById('current-plan-name') as HTMLElement,
+    planBadge: document.getElementById('current-plan-badge') as HTMLElement,
+    planDetail: document.getElementById('current-plan-detail') as HTMLElement,
 };
+
+const pages = {
+    settings: document.getElementById('page-settings') as HTMLElement,
+    billing: document.getElementById('page-billing') as HTMLElement,
+    help: document.getElementById('page-help') as HTMLElement,
+};
+
+const navItems = {
+    settings: document.getElementById('nav-settings') as HTMLButtonElement,
+    billing: document.getElementById('nav-billing') as HTMLButtonElement,
+    help: document.getElementById('nav-help') as HTMLButtonElement,
+};
+
+type PageName = keyof typeof pages;
+const PAGE_ORDER: PageName[] = ['settings', 'billing', 'help'];
+
+function isPageName(value: string): value is PageName {
+    return (PAGE_ORDER as string[]).includes(value);
+}
 
 const DEPLOY_DOCS_URL =
     'https://github.com/PalWorks/bitrix24-comment-manager/blob/main/docs/deployment/docker.md';
+const SECURITY_URL =
+    'https://github.com/PalWorks/bitrix24-comment-manager/blob/main/SECURITY.md';
+const PRIVACY_URL = 'https://palworks.github.io/bitrix24-comment-manager/privacy/';
+const TERMS_URL = 'https://palworks.github.io/bitrix24-comment-manager/terms/';
 
 /** Client side mirror of the server's attachment policy, for a fast rejection. */
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
@@ -104,13 +132,20 @@ const support = {
  * Shows exactly one view and hides the others.
  */
 function showView(viewName: 'loading' | 'loggedOut' | 'loggedIn'): void {
-    views.loading.classList.add('hidden');
-    views.loggedOut.classList.add('hidden');
-    views.loggedIn.classList.add('hidden');
-    views[viewName].classList.remove('hidden');
+    views.loading.classList.toggle('hidden', viewName !== 'loading');
+    elements.appMain.classList.toggle('hidden', viewName === 'loading');
 
-    // The header sits outside the views now, so its badge is updated here
-    // rather than being duplicated inside each one.
+    // These two are the Account row's states now rather than whole pages, so
+    // the rest of the settings stay reachable while signed out. That matters:
+    // an installation with no backend cannot sign in until it has configured
+    // one, and the field to do it with lives on this page.
+    views.loggedOut.classList.toggle('hidden', viewName !== 'loggedOut');
+    views.loggedIn.classList.toggle('hidden', viewName !== 'loggedIn');
+
+    // Activity is read from the backend for the signed in agent, so there is
+    // nothing to show, and nothing to explain, when nobody is signed in.
+    elements.activityRow.classList.toggle('hidden', viewName !== 'loggedIn');
+
     const connected = viewName === 'loggedIn';
     elements.connectionBadge.textContent = connected ? 'Connected' : 'Not connected';
     elements.connectionBadge.className = `badge ${connected ? 'badge-connected' : 'badge-disconnected'}`;
@@ -350,6 +385,7 @@ async function loadSettings(): Promise<void> {
 
     elements.backendInput.value = response.data.backendUrl;
     renderPortals(response.data.portals);
+    renderPlan(response.data.backendUrl);
 
     // Someone who already has a backend does not need a pitch for hosting, so
     // open on the tab that matches where they are. Only on load: once the user
@@ -450,6 +486,89 @@ async function initialize(): Promise<void> {
  * Selects one backend route tab. Panels are toggled rather than rebuilt so the
  * waitlist field keeps whatever the user had typed.
  */
+/**
+ * Switches the top level page.
+ *
+ * The choice is mirrored into the location hash so a page can be linked to
+ * directly, which is what makes "see Plans and billing" a link rather than an
+ * instruction to go and find it.
+ */
+function selectPage(name: PageName, focus = false): void {
+    for (const key of PAGE_ORDER) {
+        const selected = key === name;
+        navItems[key].setAttribute('aria-selected', String(selected));
+        navItems[key].tabIndex = selected ? 0 : -1;
+        pages[key].classList.toggle('hidden', !selected);
+    }
+
+    if (location.hash.slice(1) !== name) {
+        history.replaceState(null, '', `#${name}`);
+    }
+
+    if (focus) {
+        navItems[name].focus();
+    }
+
+    window.scrollTo({ top: 0 });
+}
+
+function handleNavKeydown(event: KeyboardEvent, current: PageName): void {
+    const index = PAGE_ORDER.indexOf(current);
+    let next: PageName | null = null;
+
+    switch (event.key) {
+        case 'ArrowRight':
+            next = PAGE_ORDER[(index + 1) % PAGE_ORDER.length];
+            break;
+        case 'ArrowLeft':
+            next = PAGE_ORDER[(index - 1 + PAGE_ORDER.length) % PAGE_ORDER.length];
+            break;
+        case 'Home':
+            next = PAGE_ORDER[0];
+            break;
+        case 'End':
+            next = PAGE_ORDER[PAGE_ORDER.length - 1];
+            break;
+        default:
+            return;
+    }
+
+    event.preventDefault();
+    selectPage(next, true);
+}
+
+/**
+ * Describes what this installation is actually on.
+ *
+ * Hosted plans do not exist yet, so the honest answer is one of two states:
+ * nothing configured, or pointing at a backend the user runs. Saying "Free
+ * plan" here would be inventing a relationship that does not exist.
+ */
+function renderPlan(backendUrl: string): void {
+    if (!backendUrl) {
+        elements.planName.textContent = 'Not configured';
+        elements.planBadge.textContent = 'No billing';
+        elements.planBadge.className = 'badge badge-neutral';
+        elements.planDetail.textContent =
+            'No backend is set yet, so nothing is running and nothing is billed. Set one under Settings to get started.';
+        return;
+    }
+
+    let host = backendUrl;
+    try {
+        host = new URL(backendUrl).host;
+    } catch {
+        // Keep the raw value: it is what the user typed, and it is what they
+        // would need to correct.
+    }
+
+    elements.planName.textContent = 'Self hosted';
+    elements.planBadge.textContent = 'No billing';
+    elements.planBadge.className = 'badge badge-neutral';
+    elements.planDetail.textContent =
+        `You are pointing at ${host}, a backend you run. Nothing is billed, there are no limits beyond your own server, and your audit log never leaves it.`;
+}
+
 let tabSelectedByUser = false;
 
 function selectTab(name: TabName, focus = false): void {
@@ -730,6 +849,10 @@ function initializeStaticLinks(): void {
         ['link-issues', ISSUES_URL],
         ['link-issues-fallback', ISSUES_URL],
         ['link-issues-waitlist', ISSUES_URL],
+        ['link-setup-docs-2', SETUP_DOCS_URL],
+        ['link-security', SECURITY_URL],
+        ['link-privacy', PRIVACY_URL],
+        ['link-terms', TERMS_URL],
     ];
 
     for (const [id, href] of links) {
@@ -752,6 +875,27 @@ function initializeStaticLinks(): void {
         support.waitlistFallback.classList.remove('hidden');
     }
 }
+
+for (const name of PAGE_ORDER) {
+    navItems[name].addEventListener('click', () => selectPage(name));
+    navItems[name].addEventListener('keydown', (event) => handleNavKeydown(event, name));
+}
+
+document.getElementById('link-to-billing')?.addEventListener('click', () => {
+    selectPage('billing');
+});
+
+// Opening options.html#billing lands on that page, so the popup, the docs and
+// an email can all point at it directly.
+const requestedPage = location.hash.slice(1);
+selectPage(isPageName(requestedPage) ? requestedPage : 'settings');
+
+window.addEventListener('hashchange', () => {
+    const name = location.hash.slice(1);
+    if (isPageName(name)) {
+        selectPage(name);
+    }
+});
 
 for (const name of TAB_ORDER) {
     tabs[name].addEventListener('click', () => {

@@ -99,6 +99,217 @@ describe('options page', () => {
         document.body.innerHTML = '';
     });
 
+    describe('page navigation', () => {
+        function nav(name: string): HTMLButtonElement {
+            return document.getElementById(`nav-${name}`) as HTMLButtonElement;
+        }
+
+        function page(name: string): HTMLElement {
+            return document.getElementById(`page-${name}`) as HTMLElement;
+        }
+
+        function visiblePages(): string[] {
+            return ['settings', 'billing', 'help'].filter(
+                (name) => !page(name).classList.contains('hidden'),
+            );
+        }
+
+        it('opens on settings and shows exactly one page', async () => {
+            setupChromeMockWithResponses({
+                [MESSAGE_TYPES.AUTH_STATUS]: { success: true, data: { isAuthenticated: false } },
+            });
+
+            await import('../../../extension/options/options');
+            await vi.runAllTimersAsync();
+
+            expect(visiblePages()).toEqual(['settings']);
+            expect(nav('settings').getAttribute('aria-selected')).toBe('true');
+        });
+
+        it('switches to plans and billing on click', async () => {
+            setupChromeMockWithResponses({
+                [MESSAGE_TYPES.AUTH_STATUS]: { success: true, data: { isAuthenticated: false } },
+            });
+
+            await import('../../../extension/options/options');
+            await vi.runAllTimersAsync();
+
+            nav('billing').click();
+
+            expect(visiblePages()).toEqual(['billing']);
+            expect(nav('billing').tabIndex).toBe(0);
+            expect(nav('settings').tabIndex).toBe(-1);
+        });
+
+        it('moves between pages with the arrow keys', async () => {
+            setupChromeMockWithResponses({
+                [MESSAGE_TYPES.AUTH_STATUS]: { success: true, data: { isAuthenticated: false } },
+            });
+
+            await import('../../../extension/options/options');
+            await vi.runAllTimersAsync();
+
+            nav('settings').dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
+            );
+            expect(visiblePages()).toEqual(['billing']);
+
+            nav('billing').dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'End', bubbles: true }),
+            );
+            expect(visiblePages()).toEqual(['help']);
+        });
+
+        it('opens the page named in the location hash', async () => {
+            location.hash = '#help';
+            setupChromeMockWithResponses({
+                [MESSAGE_TYPES.AUTH_STATUS]: { success: true, data: { isAuthenticated: false } },
+            });
+
+            await import('../../../extension/options/options');
+            await vi.runAllTimersAsync();
+
+            expect(visiblePages()).toEqual(['help']);
+            location.hash = '';
+        });
+
+        it('falls back to settings when the hash names nothing real', async () => {
+            location.hash = '#not-a-page';
+            setupChromeMockWithResponses({
+                [MESSAGE_TYPES.AUTH_STATUS]: { success: true, data: { isAuthenticated: false } },
+            });
+
+            await import('../../../extension/options/options');
+            await vi.runAllTimersAsync();
+
+            expect(visiblePages()).toEqual(['settings']);
+            location.hash = '';
+        });
+
+        it('sends the hosted tab cross link to plans and billing', async () => {
+            setupChromeMockWithResponses({
+                [MESSAGE_TYPES.GET_SETTINGS]: {
+                    success: true,
+                    data: { backendUrl: '', portals: [] },
+                },
+                [MESSAGE_TYPES.AUTH_STATUS]: { success: true, data: { isAuthenticated: false } },
+            });
+
+            await import('../../../extension/options/options');
+            await vi.runAllTimersAsync();
+
+            (document.getElementById('link-to-billing') as HTMLButtonElement).click();
+
+            expect(visiblePages()).toEqual(['billing']);
+        });
+    });
+
+    describe('plan status', () => {
+        it('reports nothing configured when no backend is set', async () => {
+            setupChromeMockWithResponses({
+                [MESSAGE_TYPES.GET_SETTINGS]: {
+                    success: true,
+                    data: { backendUrl: '', portals: [] },
+                },
+                [MESSAGE_TYPES.AUTH_STATUS]: { success: true, data: { isAuthenticated: false } },
+            });
+
+            await import('../../../extension/options/options');
+            await vi.runAllTimersAsync();
+
+            expect(
+                (document.getElementById('current-plan-name') as HTMLElement).textContent,
+            ).toBe('Not configured');
+            expect(
+                (document.getElementById('current-plan-detail') as HTMLElement).textContent,
+            ).toMatch(/nothing is billed/i);
+        });
+
+        it('names the host it is pointing at when one is set', async () => {
+            setupChromeMockWithResponses({
+                [MESSAGE_TYPES.GET_SETTINGS]: {
+                    success: true,
+                    data: { backendUrl: 'https://api.example.com', portals: [] },
+                },
+                [MESSAGE_TYPES.AUTH_STATUS]: { success: true, data: { isAuthenticated: false } },
+            });
+
+            await import('../../../extension/options/options');
+            await vi.runAllTimersAsync();
+
+            expect(
+                (document.getElementById('current-plan-name') as HTMLElement).textContent,
+            ).toBe('Self hosted');
+            expect(
+                (document.getElementById('current-plan-detail') as HTMLElement).textContent,
+            ).toContain('api.example.com');
+        });
+    });
+
+    describe('account row', () => {
+        it('keeps the settings reachable while signed out', async () => {
+            setupChromeMockWithResponses({
+                [MESSAGE_TYPES.AUTH_STATUS]: { success: true, data: { isAuthenticated: false } },
+            });
+
+            await import('../../../extension/options/options');
+            await vi.runAllTimersAsync();
+
+            // The whole point of the row layout: an installation with no
+            // backend cannot sign in until it configures one, and the field to
+            // do that with is on this page.
+            const config = document.getElementById('config-section') as HTMLElement;
+            expect(config.classList.contains('hidden')).toBe(false);
+            expect(
+                (document.getElementById('view-logged-out') as HTMLElement).classList.contains(
+                    'hidden',
+                ),
+            ).toBe(false);
+        });
+
+        it('hides the activity row when nobody is signed in', async () => {
+            setupChromeMockWithResponses({
+                [MESSAGE_TYPES.AUTH_STATUS]: { success: true, data: { isAuthenticated: false } },
+            });
+
+            await import('../../../extension/options/options');
+            await vi.runAllTimersAsync();
+
+            expect(
+                (document.getElementById('row-activity') as HTMLElement).classList.contains(
+                    'hidden',
+                ),
+            ).toBe(true);
+        });
+
+        it('shows the activity row once signed in', async () => {
+            setupChromeMockWithResponses({
+                [MESSAGE_TYPES.AUTH_STATUS]: {
+                    success: true,
+                    data: {
+                        isAuthenticated: true,
+                        memberId: 'm-1',
+                        domain: 'acme.bitrix24.com',
+                        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+                    },
+                },
+                [MESSAGE_TYPES.GET_ACTIVITY_LOG]: { success: true, data: { actions: [] } },
+            });
+
+            await import('../../../extension/options/options');
+            await vi.runAllTimersAsync();
+
+            expect(
+                (document.getElementById('row-activity') as HTMLElement).classList.contains(
+                    'hidden',
+                ),
+            ).toBe(false);
+            expect(
+                (document.getElementById('connection-badge') as HTMLElement).textContent,
+            ).toBe('Connected');
+        });
+    });
+
     describe('backend route tabs', () => {
         function tab(name: string): HTMLButtonElement {
             return document.getElementById(`tab-${name}`) as HTMLButtonElement;

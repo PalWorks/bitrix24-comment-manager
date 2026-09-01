@@ -11,11 +11,23 @@
 <body>
     <div id="options-app">
 
-        <div class="options-header">
-            <img src="../assets/icon-32.png" alt="" class="header-logo" width="28" height="28">
-            <h1>Bitrix24 Comment Manager</h1>
-            <span id="connection-badge" class="badge badge-disconnected">Not connected</span>
-        </div>
+        <header class="app-header">
+            <div class="app-bar">
+                <div class="app-brand">
+                    <img src="../assets/icon-32.png" alt="" width="26" height="26">
+                    <h1>Bitrix24 Comment Manager</h1>
+                </div>
+                <span id="connection-badge" class="badge badge-disconnected">Not connected</span>
+            </div>
+            <nav class="app-nav" role="tablist" aria-label="Sections">
+                <button class="app-nav-item" type="button" role="tab" id="nav-settings"
+                    aria-controls="page-settings" aria-selected="true" tabindex="0">Settings</button>
+                <button class="app-nav-item" type="button" role="tab" id="nav-billing"
+                    aria-controls="page-billing" aria-selected="false" tabindex="-1">Plans and billing</button>
+                <button class="app-nav-item" type="button" role="tab" id="nav-help" aria-controls="page-help"
+                    aria-selected="false" tabindex="-1">Help</button>
+            </nav>
+        </header>
 
         <div id="view-loading" class="view">
             <div class="loading-container">
@@ -24,275 +36,393 @@
             </div>
         </div>
 
+        <main id="app-main" class="hidden">
 
-        <div id="config-section" class="card hidden">
-            <h2 class="card-title">Backend</h2>
-            <p class="card-intro">
-                This extension routes every comment through a backend so the audit trail lives
-                somewhere the agent cannot edit. Choose how you want to get one.
-            </p>
+            <!-- ===================== Settings ===================== -->
+            <section id="page-settings" class="page" role="tabpanel" aria-labelledby="nav-settings" tabindex="0">
 
-            <div class="tabs" role="tablist" aria-label="How to get a backend">
-                <button class="tab" type="button" role="tab" id="tab-hosted" aria-controls="panel-hosted"
-                    aria-selected="false" tabindex="-1">Hosted</button>
-                <button class="tab" type="button" role="tab" id="tab-deploy" aria-controls="panel-deploy"
-                    aria-selected="false" tabindex="-1">Deploy your own</button>
-                <button class="tab" type="button" role="tab" id="tab-selfhost" aria-controls="panel-selfhost"
-                    aria-selected="true" tabindex="0">Self hosted</button>
-            </div>
+                <div class="row" id="config-section">
+                    <div class="row-label">
+                        <h2>Backend</h2>
+                        <p>
+                            Every comment is routed through a backend so the audit trail lives
+                            somewhere the agent cannot edit. Choose how you want to get one.
+                        </p>
+                    </div>
+                    <div class="row-body">
+                        <div class="tabs" role="tablist" aria-label="How to get a backend">
+                            <button class="tab" type="button" role="tab" id="tab-hosted" aria-controls="panel-hosted"
+                                aria-selected="false" tabindex="-1">Hosted</button>
+                            <button class="tab" type="button" role="tab" id="tab-deploy" aria-controls="panel-deploy"
+                                aria-selected="false" tabindex="-1">Deploy your own</button>
+                            <button class="tab" type="button" role="tab" id="tab-selfhost"
+                                aria-controls="panel-selfhost" aria-selected="true" tabindex="0">Self hosted</button>
+                        </div>
 
-            <div id="panel-hosted" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-hosted" tabindex="0">
-                <p class="panel-lead">
-                    We run the backend, you paste the URL we send you. Nothing to deploy and
-                    nothing to patch.
-                </p>
+                        <div id="panel-hosted" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-hosted"
+                            tabindex="0">
+                            <p class="panel-lead">
+                                We run the backend, you paste the URL we send you. Nothing to deploy
+                                and nothing to patch.
+                            </p>
+                            <p class="panel-note">
+                                Hosting is not open yet. The plans, what each one includes, and how to
+                                be told when it opens are all on the
+                                <button class="btn-link" type="button" id="link-to-billing">Plans and billing</button>
+                                page.
+                            </p>
+                        </div>
 
-                <ul class="plans">
-                    <li class="plan">
-                        <span class="plan-name">Free</span>
-                        <span class="plan-price">$0</span>
-                        <ul class="plan-features">
-                            <li>1 portal, up to 5 agents</li>
-                            <li>1,000 comments a month</li>
-                            <li>90 days of audit history</li>
-                        </ul>
-                    </li>
-                    <li class="plan">
-                        <span class="plan-name">Team</span>
-                        <span class="plan-price">$19<span class="plan-period">/mo</span></span>
-                        <ul class="plan-features">
-                            <li>3 portals, up to 25 agents</li>
-                            <li>10,000 comments a month</li>
-                            <li>12 months of history, CSV export</li>
-                        </ul>
-                    </li>
-                    <li class="plan">
-                        <span class="plan-name">Business</span>
-                        <span class="plan-price">$49<span class="plan-period">/mo</span></span>
-                        <ul class="plan-features">
-                            <li>Unlimited portals and agents</li>
-                            <li>Unlimited comments</li>
-                            <li>3 years of history, priority support</li>
-                        </ul>
-                    </li>
-                </ul>
-
-                <p class="panel-note">
-                    Hosting is not open yet. Leave your address and we will write to you when it is.
-                    Everything the hosted plan runs is the same code as this repository, so nothing
-                    here locks you in: export your audit log and self host at any time.
-                </p>
-
-                <div class="setting-row">
-                    <label class="visually-hidden" for="waitlist-email">Email address</label>
-                    <input id="waitlist-email" class="setting-input" type="email"
-                        placeholder="you@company.com" autocomplete="email" spellcheck="false">
-                    <button id="btn-waitlist" class="btn-primary" type="button">Notify me</button>
-                </div>
-                <p id="waitlist-status" class="setting-status hidden" role="status"></p>
-                <p id="waitlist-fallback" class="panel-links hidden">
-                    This build cannot take your address.
-                    <a id="link-issues-waitlist" href="#" target="_blank" rel="noopener">Watch the repository</a>
-                    to hear when hosting opens.
-                </p>
-            </div>
-
-            <div id="panel-deploy" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-deploy" tabindex="0">
-                <p class="panel-lead">
-                    One command brings up the backend and its database on any machine with Docker,
-                    from a laptop to a five dollar VPS.
-                </p>
-                <pre class="code-block"><code>git clone https://github.com/PalWorks/bitrix24-comment-manager
+                        <div id="panel-deploy" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-deploy"
+                            tabindex="0">
+                            <p class="panel-lead">
+                                One command brings up the backend and its database on any machine with
+                                Docker, from a laptop to a five dollar VPS.
+                            </p>
+                            <pre class="code-block"><code>git clone https://github.com/PalWorks/bitrix24-comment-manager
 cd bitrix24-comment-manager
 cp .env.docker.example .env
 docker compose up -d</code></pre>
-                <p class="panel-note">
-                    Fill in your Bitrix24 client ID and secret in <code>.env</code> first. The
-                    compose file generates the signing and encryption keys for you on first run.
-                    Put it behind a domain with HTTPS, then paste that origin below.
-                </p>
-                <p class="panel-links">
-                    <a id="link-deploy-docs" href="#" target="_blank" rel="noopener">Deployment guide</a>
-                </p>
-            </div>
+                            <p class="panel-note">
+                                Fill in your Bitrix24 client ID and secret in <code>.env</code> first.
+                                Put it behind a domain with HTTPS, then paste that origin below.
+                            </p>
+                            <p class="panel-links">
+                                <a id="link-deploy-docs" href="#" target="_blank" rel="noopener">Deployment guide</a>
+                            </p>
+                        </div>
 
-            <div id="panel-selfhost" class="tab-panel" role="tabpanel" aria-labelledby="tab-selfhost" tabindex="0">
-                <p class="panel-lead">
-                    Already have one? Paste the origin your administrator gave you. If you are the
-                    administrator, the setup guide walks through registering the Bitrix24
-                    application and deploying the server yourself.
-                </p>
-                <p class="panel-links">
-                    <a id="link-setup-docs" href="#" target="_blank" rel="noopener">Setup guide</a>
-                </p>
-            </div>
+                        <div id="panel-selfhost" class="tab-panel" role="tabpanel" aria-labelledby="tab-selfhost"
+                            tabindex="0">
+                            <p class="panel-lead">
+                                Already have one? Paste the origin your administrator gave you. If you
+                                are the administrator, the setup guide walks through registering the
+                                Bitrix24 application and deploying the server yourself.
+                            </p>
+                            <p class="panel-links">
+                                <a id="link-setup-docs" href="#" target="_blank" rel="noopener">Setup guide</a>
+                            </p>
+                        </div>
 
-            <div class="setting-block setting-block-divided">
-                <label class="setting-label" for="opt-backend-url">Backend URL</label>
-                <p class="setting-help">
-                    The API this extension talks to, whichever route you took above.
-                </p>
-                <div class="setting-row">
-                    <input id="opt-backend-url" class="setting-input" type="url"
-                        placeholder="https://api.example.com" autocomplete="off" spellcheck="false">
-                    <button id="btn-save-backend" class="btn-primary" type="button">Save</button>
-                </div>
-                <p id="backend-status" class="setting-status hidden" role="status"></p>
-            </div>
-
-            <div class="setting-block">
-                <label class="setting-label" for="opt-portal-input">Bitrix24 portals</label>
-                <p class="setting-help">
-                    Portals on <code>bitrix24.com</code> work out of the box. Add your portal here
-                    if it is on another Bitrix24 domain, on your own domain, or self hosted.
-                    Chrome will ask you to approve access to that site.
-                </p>
-                <div class="setting-row">
-                    <input id="opt-portal-input" class="setting-input" type="text"
-                        placeholder="acme.bitrix24.de" autocomplete="off" spellcheck="false">
-                    <button id="btn-add-portal" class="btn-primary" type="button">Add portal</button>
-                </div>
-                <p id="portal-status" class="setting-status hidden" role="status"></p>
-                <ul id="portal-list" class="portal-list"></ul>
-                <p id="portal-empty" class="empty-message">No additional portals added.</p>
-            </div>
-        </div>
-
-        <div id="view-logged-out" class="view hidden">
-            <div class="card">
-                <p class="logged-out-message">You are not logged in. Open the extension popup to connect your Bitrix24
-                    account.</p>
-            </div>
-        </div>
-
-        <div id="view-logged-in" class="view hidden">
-            <div class="card">
-                <h2 class="card-title">Agent Information</h2>
-                <div class="info-row">
-                    <span class="info-label">Domain</span>
-                    <span id="opt-agent-domain" class="info-value"></span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Member ID</span>
-                    <span id="opt-agent-member-id" class="info-value"></span>
-                </div>
-            </div>
-
-            <div class="card">
-                <h2 class="card-title">Session Status</h2>
-                <div class="info-row">
-                    <span class="info-label">Status</span>
-                    <span id="opt-session-status" class="info-value status-active">Authenticated</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Expires</span>
-                    <span id="opt-session-expiry" class="info-value"></span>
-                </div>
-            </div>
-
-            <div class="card">
-                <h2 class="card-title">Recent Activity</h2>
-                <div id="activity-container">
-                    <div class="activity-table-wrapper">
-                        <table id="activity-table" class="activity-table">
-                            <thead>
-                                <tr>
-                                    <th>Time</th>
-                                    <th>Lead</th>
-                                    <th>Action</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="activity-tbody"></tbody>
-                        </table>
+                        <div class="field-block">
+                            <label class="field-label" for="opt-backend-url">Backend URL</label>
+                            <div class="field-row">
+                                <input id="opt-backend-url" class="field-input" type="url"
+                                    placeholder="https://api.example.com" autocomplete="off" spellcheck="false">
+                                <button id="btn-save-backend" class="btn-primary" type="button">Save</button>
+                            </div>
+                            <p id="backend-status" class="field-status hidden" role="status"></p>
+                        </div>
                     </div>
-                    <p id="activity-empty" class="empty-message hidden">No recent activity.</p>
-                    <p id="activity-error" class="error-message hidden"></p>
-                </div>
-            </div>
-
-            <button id="btn-options-logout" class="btn btn-danger">Logout</button>
-            <p id="logout-confirmation" class="confirmation-message hidden">You have been logged out.</p>
-        </div>
-
-        <div id="support-section" class="card">
-            <h2 class="card-title">Get help</h2>
-            <p class="card-intro">
-                Tell us what went wrong and we will reply by email. Attach a screenshot or a log
-                if it helps.
-            </p>
-
-            <form id="support-form" novalidate>
-                <div class="setting-block">
-                    <label class="setting-label" for="support-name">Your name</label>
-                    <input id="support-name" class="setting-input setting-input-block" type="text"
-                        autocomplete="name" spellcheck="false" required maxlength="80"
-                        placeholder="Jane Cooper">
                 </div>
 
-                <div class="setting-block">
-                    <label class="setting-label" for="support-email">Your email</label>
-                    <input id="support-email" class="setting-input setting-input-block" type="email"
-                        autocomplete="email" spellcheck="false" required placeholder="you@company.com">
+                <div class="row">
+                    <div class="row-label">
+                        <h2>Bitrix24 portals</h2>
+                        <p>
+                            Portals on <code>bitrix24.com</code> work out of the box. Add yours here
+                            if it is on another Bitrix24 domain, your own domain, or self hosted.
+                        </p>
+                    </div>
+                    <div class="row-body">
+                        <div class="field-block">
+                            <label class="field-label" for="opt-portal-input">Add a portal</label>
+                            <p class="field-help">Chrome will ask you to approve access to that site.</p>
+                            <div class="field-row">
+                                <input id="opt-portal-input" class="field-input" type="text"
+                                    placeholder="acme.bitrix24.de" autocomplete="off" spellcheck="false">
+                                <button id="btn-add-portal" class="btn-primary" type="button">Add portal</button>
+                            </div>
+                            <p id="portal-status" class="field-status hidden" role="status"></p>
+                            <ul id="portal-list" class="portal-list"></ul>
+                            <p id="portal-empty" class="empty-message">No additional portals added.</p>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="setting-block">
-                    <label class="setting-label" for="support-phone">Phone (optional)</label>
-                    <input id="support-phone" class="setting-input setting-input-block" type="tel"
-                        autocomplete="tel" spellcheck="false" maxlength="24"
-                        placeholder="+971 50 123 4567">
-                    <p class="setting-help">
-                        Include the country code, so we can call you wherever you are.
-                    </p>
+                <div class="row">
+                    <div class="row-label">
+                        <h2>Account</h2>
+                        <p>The Bitrix24 account this browser is connected to, and its session.</p>
+                    </div>
+                    <div class="row-body">
+                        <div id="view-logged-out" class="view hidden">
+                            <p class="empty-state">
+                                Not connected. Open the extension popup to connect your Bitrix24 account.
+                            </p>
+                        </div>
+
+                        <div id="view-logged-in" class="view hidden">
+                            <dl class="info-list">
+                                <div class="info-row">
+                                    <dt class="info-label">Portal</dt>
+                                    <dd id="opt-agent-domain" class="info-value"></dd>
+                                </div>
+                                <div class="info-row">
+                                    <dt class="info-label">Member ID</dt>
+                                    <dd id="opt-agent-member-id" class="info-value"></dd>
+                                </div>
+                                <div class="info-row">
+                                    <dt class="info-label">Status</dt>
+                                    <dd id="opt-session-status" class="info-value status-active">Authenticated</dd>
+                                </div>
+                                <div class="info-row">
+                                    <dt class="info-label">Session expires</dt>
+                                    <dd id="opt-session-expiry" class="info-value"></dd>
+                                </div>
+                            </dl>
+                            <button id="btn-options-logout" class="btn-danger" type="button">Log out</button>
+                            <p id="logout-confirmation" class="field-status hidden">You have been logged out.</p>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="setting-block">
-                    <label class="setting-label" for="support-category">Topic</label>
-                    <select id="support-category" class="setting-input setting-input-block">
-                        <option value="bug">Something is broken</option>
-                        <option value="question">A question about setup</option>
-                        <option value="billing">Hosting and billing</option>
-                    </select>
+                <div class="row" id="row-activity">
+                    <div class="row-label">
+                        <h2>Recent activity</h2>
+                        <p>
+                            Your last operations, read back from the audit log your backend keeps.
+                            Comment text is never stored there, only a hash of it.
+                        </p>
+                    </div>
+                    <div class="row-body">
+                        <div class="table-wrapper">
+                            <table id="activity-table" class="activity-table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Lead</th>
+                                        <th>Action</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="activity-tbody"></tbody>
+                            </table>
+                        </div>
+                        <p id="activity-empty" class="empty-message hidden">No recent activity.</p>
+                        <p id="activity-error" class="error-message hidden"></p>
+                    </div>
                 </div>
 
-                <div class="setting-block">
-                    <label class="setting-label" for="support-message">What happened</label>
-                    <textarea id="support-message" class="setting-input setting-input-block"
-                        rows="5" required maxlength="5000"
-                        placeholder="What you did, what you expected, and what happened instead."></textarea>
-                    <p id="support-counter" class="setting-help setting-counter">0 / 5000</p>
+            </section>
+
+            <!-- ===================== Plans and billing ===================== -->
+            <section id="page-billing" class="page hidden" role="tabpanel" aria-labelledby="nav-billing" tabindex="0">
+
+                <div class="row">
+                    <div class="row-label">
+                        <h2>Your plan</h2>
+                        <p>What this installation is on today.</p>
+                    </div>
+                    <div class="row-body">
+                        <div class="plan-current">
+                            <div class="plan-current-head">
+                                <span id="current-plan-name" class="plan-current-name">Not configured</span>
+                                <span id="current-plan-badge" class="badge badge-neutral">No billing</span>
+                            </div>
+                            <p id="current-plan-detail" class="plan-current-detail">
+                                No backend is set yet, so nothing is running and nothing is billed.
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="setting-block">
-                    <label class="setting-label" for="support-file">Attachment (optional)</label>
-                    <input id="support-file" class="setting-file" type="file"
-                        accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain,application/json,application/zip">
-                    <p id="support-file-help" class="setting-help">
-                        PNG, JPEG, GIF, WebP, PDF, text, JSON or zip, up to 5 MB.
-                    </p>
+                <div class="row">
+                    <div class="row-label">
+                        <h2>Plans</h2>
+                        <p>
+                            What hosting will cost when it opens. Self hosting stays free and
+                            unlimited, and always will.
+                        </p>
+                    </div>
+                    <div class="row-body">
+                        <ul class="plans">
+                            <li class="plan">
+                                <span class="plan-name">Free</span>
+                                <span class="plan-price">$0</span>
+                                <ul class="plan-features">
+                                    <li>1 portal, up to 5 agents</li>
+                                    <li>1,000 comments a month</li>
+                                    <li>90 days of audit history</li>
+                                </ul>
+                            </li>
+                            <li class="plan">
+                                <span class="plan-name">Team</span>
+                                <span class="plan-price">$19<span class="plan-period">/mo</span></span>
+                                <ul class="plan-features">
+                                    <li>3 portals, up to 25 agents</li>
+                                    <li>10,000 comments a month</li>
+                                    <li>12 months of history</li>
+                                    <li>CSV export</li>
+                                </ul>
+                            </li>
+                            <li class="plan">
+                                <span class="plan-name">Business</span>
+                                <span class="plan-price">$49<span class="plan-period">/mo</span></span>
+                                <ul class="plan-features">
+                                    <li>Unlimited portals and agents</li>
+                                    <li>Unlimited comments</li>
+                                    <li>3 years of history</li>
+                                    <li>Priority support</li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <p class="panel-note">
+                            Everything a hosted plan runs is the same code as the public repository,
+                            so nothing here locks you in: export your audit log and self host at any
+                            time.
+                        </p>
+                    </div>
                 </div>
 
-                <div class="honeypot" aria-hidden="true">
-                    <label for="support-company">Company</label>
-                    <input id="support-company" type="text" tabindex="-1" autocomplete="off">
+                <div class="row">
+                    <div class="row-label">
+                        <h2>Billing</h2>
+                        <p>Payment method, invoices and plan changes.</p>
+                    </div>
+                    <div class="row-body">
+                        <div class="notice">
+                            <p>
+                                <strong>Nothing to bill yet.</strong> Hosting is not open, so there is
+                                no payment method to add and no invoice to show. When it opens, this
+                                is where you will change plan, update your card and download invoices.
+                            </p>
+                        </div>
+
+                        <div class="field-block">
+                            <label class="field-label" for="waitlist-email">Tell me when hosting opens</label>
+                            <p class="field-help">
+                                One email when it is ready. Nothing else, and you can say stop at any time.
+                            </p>
+                            <div class="field-row">
+                                <input id="waitlist-email" class="field-input" type="email"
+                                    placeholder="you@company.com" autocomplete="email" spellcheck="false">
+                                <button id="btn-waitlist" class="btn-primary" type="button">Notify me</button>
+                            </div>
+                            <p id="waitlist-status" class="field-status hidden" role="status"></p>
+                            <p id="waitlist-fallback" class="field-help hidden">
+                                This build cannot take your address.
+                                <a id="link-issues-waitlist" href="#" target="_blank" rel="noopener">Watch the
+                                    repository</a>
+                                to hear when hosting opens.
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                <button id="btn-support-send" class="btn-primary" type="submit">Send</button>
-                <p id="support-status" class="setting-status hidden" role="status"></p>
-            </form>
+            </section>
 
-            <p id="support-fallback" class="panel-links hidden">
-                Email support is not enabled in this build.
-                <a id="link-issues-fallback" href="#" target="_blank" rel="noopener">Open an issue on GitHub</a>
-                instead.
-            </p>
+            <!-- ===================== Help ===================== -->
+            <section id="page-help" class="page hidden" role="tabpanel" aria-labelledby="nav-help" tabindex="0">
 
-            <p class="panel-links">
-                Prefer to work in the open?
-                <a id="link-issues" href="#" target="_blank" rel="noopener">Browse or file an issue</a>.
-            </p>
-        </div>
+                <div class="row" id="support-section">
+                    <div class="row-label">
+                        <h2>Get help</h2>
+                        <p>
+                            Tell us what went wrong and we will reply by email. A screenshot or a log
+                            makes it faster.
+                        </p>
+                    </div>
+                    <div class="row-body">
+                        <form id="support-form" novalidate>
+                            <div class="field-block">
+                                <label class="field-label" for="support-name">Your name</label>
+                                <input id="support-name" class="field-input field-input-block" type="text"
+                                    autocomplete="name" spellcheck="false" required maxlength="80"
+                                    placeholder="Jane Cooper">
+                            </div>
 
+                            <div class="field-block">
+                                <label class="field-label" for="support-email">Your email</label>
+                                <input id="support-email" class="field-input field-input-block" type="email"
+                                    autocomplete="email" spellcheck="false" required placeholder="you@company.com">
+                            </div>
+
+                            <div class="field-block">
+                                <label class="field-label" for="support-phone">Phone (optional)</label>
+                                <input id="support-phone" class="field-input field-input-block" type="tel"
+                                    autocomplete="tel" spellcheck="false" maxlength="24"
+                                    placeholder="+971 50 123 4567">
+                                <p class="field-help">Include the country code, so we can call you wherever you are.
+                                </p>
+                            </div>
+
+                            <div class="field-block">
+                                <label class="field-label" for="support-category">Topic</label>
+                                <select id="support-category" class="field-input field-input-block">
+                                    <option value="bug">Something is broken</option>
+                                    <option value="question">A question about setup</option>
+                                    <option value="billing">Hosting and billing</option>
+                                </select>
+                            </div>
+
+                            <div class="field-block">
+                                <label class="field-label" for="support-message">What happened</label>
+                                <textarea id="support-message" class="field-input field-input-block" rows="5" required
+                                    maxlength="5000"
+                                    placeholder="What you did, what you expected, and what happened instead."></textarea>
+                                <p id="support-counter" class="field-help field-counter">0 / 5000</p>
+                            </div>
+
+                            <div class="field-block">
+                                <label class="field-label" for="support-file">Attachment (optional)</label>
+                                <input id="support-file" class="field-file" type="file"
+                                    accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain,application/json,application/zip">
+                                <p class="field-help">PNG, JPEG, GIF, WebP, PDF, text, JSON or zip, up to 5 MB.</p>
+                            </div>
+
+                            <div class="honeypot" aria-hidden="true">
+                                <label for="support-company">Company</label>
+                                <input id="support-company" type="text" tabindex="-1" autocomplete="off">
+                            </div>
+
+                            <button id="btn-support-send" class="btn-primary" type="submit">Send</button>
+                            <p id="support-status" class="field-status hidden" role="status"></p>
+                        </form>
+
+                        <p id="support-fallback" class="field-help hidden">
+                            Email support is not enabled in this build.
+                            <a id="link-issues-fallback" href="#" target="_blank" rel="noopener">Open an issue on
+                                GitHub</a>
+                            instead.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="row-label">
+                        <h2>Documentation</h2>
+                        <p>Everything about running this yourself is in the open.</p>
+                    </div>
+                    <div class="row-body">
+                        <ul class="link-list">
+                            <li>
+                                <a id="link-issues" href="#" target="_blank" rel="noopener">Issue tracker</a>
+                                <span>Report a bug, or see whether someone already has</span>
+                            </li>
+                            <li>
+                                <a id="link-setup-docs-2" href="#" target="_blank" rel="noopener">Setup guide</a>
+                                <span>Registering the Bitrix24 application and deploying a backend</span>
+                            </li>
+                            <li>
+                                <a id="link-security" href="#" target="_blank" rel="noopener">Security policy</a>
+                                <span>How to report a vulnerability privately</span>
+                            </li>
+                            <li>
+                                <a id="link-privacy" href="#" target="_blank" rel="noopener">Privacy policy</a>
+                                <span>What this extension stores, and what we receive</span>
+                            </li>
+                            <li>
+                                <a id="link-terms" href="#" target="_blank" rel="noopener">Terms of use</a>
+                                <span>Licence, warranty and acceptable use</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+            </section>
+
+        </main>
     </div>
     <script type="module" src="options.ts"></script>
 </body>
