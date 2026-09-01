@@ -87,6 +87,12 @@ After approval:
 
 ## Upgrading an existing listing
 
+### v2.0.2
+
+Removes the unused `activeTab` permission. Removing a permission does not
+trigger a review; it shortens the install prompt and removes the risk of a
+rejection for asking for something the extension does not use.
+
 ### v2.0.1
 
 No manifest change, so no permission review. It is a resilience pass over the
@@ -96,6 +102,56 @@ what it fixes.
 One thing to check before building: `VITE_SUPPORT_URL` now lives in the
 committed `.env.production` rather than being passed on the command line. Confirm
 it survives into the artifact, which `scripts/build-extension.sh` reports.
+
+## Filling in the Privacy tab
+
+Every field below is required, and the dashboard will not let you submit until
+each is filled. These are current as of 2.0.2; **if you change the manifest,
+change these in the same commit.**
+
+| Field | Text |
+|---|---|
+| Single purpose | Lets authorised CRM agents add, edit and delete timeline comments on Bitrix24 lead pages from a popup, without leaving the lead. |
+| `tabs` | Reads the URL of the active tab to work out which Bitrix24 lead is open, and opens the extension's own Help page in a new tab. No browsing history is read or stored. |
+| `storage` | `chrome.storage.local` holds the backend URL the user enters and the list of portals they have added. `chrome.storage.session` holds the session token and the comments submitted in the current session, so the popup keeps its state when it is closed and reopened. Neither is transmitted anywhere. |
+| `scripting` | Registers a content script at runtime for a Bitrix24 portal the user has added themselves, on a domain the static `*.bitrix24.com` match cannot cover. Used only through `chrome.scripting.registerContentScripts`, and unregistered when the user removes the portal. No code is injected into arbitrary pages. |
+
+Host permission justification:
+
+> Static grant: `https://*.bitrix24.com/*` runs a content script that reads only
+> the page URL, to detect the CRM lead ID, and sends that ID to the service
+> worker. It does not read or modify page content.
+>
+> Optional grant: `https://*/*` is never requested at install time. Bitrix24
+> also serves portals on regional top level domains, on customer owned domains,
+> and on self hosted installations, and publishes no list of them; match
+> patterns cannot wildcard a top level domain, so the set cannot be enumerated
+> in the manifest. It is requested one origin at a time through
+> `chrome.permissions.request`, only when a user adds their own portal on the
+> options page, and it is revoked when they remove it.
+>
+> Navigation between leads without a page reload is detected with a throttled
+> MutationObserver plus the popstate and hashchange events.
+
+**Remote code: No.** The CSP is `script-src 'self'`, everything is bundled, and
+nothing is fetched and evaluated at runtime.
+
+### Data usage
+
+Check both of these, and nothing else:
+
+| Category | Why |
+|---|---|
+| **Personally identifiable information** | The Get help form collects a name, an email address and optionally a phone number, and sends them to the publisher's support service |
+| **Authentication information** | The session token, and the Bitrix24 OAuth tokens the backend holds |
+
+Comment text is not one of the nine categories. It is a CRM record written by
+the user and sent only to the backend that user configured; it is neither
+website content read from a page nor a personal communication.
+
+### Privacy policy URL
+
+`https://palworks.github.io/bitrix24-comment-manager/privacy/`
 
 ### v2.0.0
 

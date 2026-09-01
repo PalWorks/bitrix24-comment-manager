@@ -2,6 +2,19 @@
 
 All notable changes to the Bitrix24 Comment Manager are documented in this file. Entries are ordered from newest to oldest.
 
+## [2.0.2] Drop an unused permission
+
+### Removed
+
+- **`activeTab`.** It was declared and never used. Nothing in the extension
+  calls `executeScript`, `insertCSS` or `captureVisibleTab`, and the two places
+  that read a tab's URL are covered by the `tabs` permission already declared.
+  Chrome rejects a version that asks for a permission it does not need, so this
+  was a live risk on every submission as well as a larger install prompt than
+  the extension had earned.
+
+Nothing else changed. No code, no behaviour, no tests.
+
 ## [2.0.1] Resilience audit
 
 A pass over the whole codebase looking for what breaks under a bad network and

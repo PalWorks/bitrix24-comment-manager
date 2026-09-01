@@ -1,6 +1,6 @@
 {
     "name": "bitrix24-comment-extension",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "private": true,
     "description": "Bitrix24 Chrome Extension Comment System with governed workflow",
     "workspaces": [
