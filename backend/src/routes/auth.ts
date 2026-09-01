@@ -43,9 +43,20 @@ interface PendingSession {
 
 const pendingSessions = new Map<string, PendingSession>();
 const SESSION_TTL_MS = 10 * 60 * 1000;
+const TOKEN_EXCHANGE_TIMEOUT_MS = 20_000;
 
+/**
+ * Drops a pending session once it can no longer complete.
+ *
+ * Unreferenced so a login started moments before a deploy cannot hold the
+ * process open for the rest of the ten minutes: every pending login would
+ * otherwise have to time out before the runtime agreed to exit.
+ */
 function expireSession(state: string): void {
-    setTimeout(() => pendingSessions.delete(state), SESSION_TTL_MS);
+    const timer = setTimeout(() => pendingSessions.delete(state), SESSION_TTL_MS);
+    if (typeof timer.unref === 'function') {
+        timer.unref();
+    }
 }
 
 /**
@@ -202,17 +213,35 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
 
         const config = loadConfig();
 
-        const tokenResponse = await fetch('https://oauth.bitrix.info/oauth/token/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                grant_type: 'authorization_code',
-                client_id: config.bitrix24ClientId,
-                client_secret: config.bitrix24ClientSecret,
-                redirect_uri: `${config.backendUrl}/auth/callback`,
-                code,
-            }).toString(),
-        });
+        // The user is sitting in front of a blank popup while this runs. Node's
+        // fetch has no default timeout, so without this a Bitrix24 that accepts
+        // the connection and never answers leaves that tab spinning until the
+        // browser gives up, with the request still held open here.
+        let tokenResponse: Awaited<ReturnType<typeof fetch>>;
+        try {
+            tokenResponse = await fetch('https://oauth.bitrix.info/oauth/token/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    grant_type: 'authorization_code',
+                    client_id: config.bitrix24ClientId,
+                    client_secret: config.bitrix24ClientSecret,
+                    redirect_uri: `${config.backendUrl}/auth/callback`,
+                    code,
+                }).toString(),
+                signal: AbortSignal.timeout(TOKEN_EXCHANGE_TIMEOUT_MS),
+            });
+        } catch (transportError) {
+            logger.error('Bitrix24 token exchange did not complete', {
+                error: transportError instanceof Error ? transportError.message : String(transportError),
+            });
+            auditAuthFailure(req, 'Could not reach Bitrix24 to exchange the authorization code.', {
+                memberId,
+                domain,
+            });
+            res.status(504).send('<h2>Authentication timed out. Bitrix24 did not respond. Please close this tab and try again.</h2>');
+            return;
+        }
 
         if (!tokenResponse.ok) {
             const errorBody = await tokenResponse.text();
@@ -263,7 +292,27 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
             return;
         }
 
-        const resolvedMemberId = memberId || tokenData.user_id?.toString() || 'unknown';
+        // Tokens are stored under this id and later looked up by it alone. A
+        // shared placeholder would put two portals in one row, so a login that
+        // cannot be attributed is refused rather than filed under a name that
+        // collides with every other unattributed login.
+        const resolvedMemberId = (
+            memberId ||
+            tokenData.member_id?.toString() ||
+            tokenData.user_id?.toString() ||
+            ''
+        ).trim();
+
+        if (!resolvedMemberId) {
+            logger.error('OAuth callback carried no member id', { domain: resolvedDomain });
+            auditAuthFailure(req, 'Bitrix24 returned no member id for the session.', {
+                domain: resolvedDomain,
+            });
+            res.status(502).send(
+                '<h2>Authorization failed. Bitrix24 did not identify the account. Please close this tab and try again.</h2>',
+            );
+            return;
+        }
         const clientEndpoint = tokenData.client_endpoint || `https://${resolvedDomain}/rest/`;
         const accessTokenExpiresAt = Math.floor(Date.now() / 1000) + (tokenData.expires_in || 3600);
 

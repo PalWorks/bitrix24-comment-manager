@@ -65,6 +65,30 @@ else
     echo "Portable build: no backend baked in, users configure one on first run."
 fi
 
+# The support URL is the mirror image of the check above: the backend URL must
+# NOT be here, and this one must. It is the address the Get help form and the
+# hosting waitlist post to, and when it is missing the options page hides both
+# and says nothing, so the failure ships looking exactly like a success. It used
+# to be passed on the command line, which is precisely how that happened.
+SUPPORT_URL=$(cd "$EXTENSION_DIR" && node -e "
+  const { loadEnv } = require('vite');
+  process.stdout.write(loadEnv('production', '$PROJECT_ROOT', 'VITE_').VITE_SUPPORT_URL || '');
+")
+
+if [ -z "$SUPPORT_URL" ]; then
+    echo "NOTE: no VITE_SUPPORT_URL. The Get help form is hidden and points at the issue tracker."
+    echo "      That is correct for a fork. For the published build, set it in .env.production."
+elif grep -rqF "$SUPPORT_URL" "$DIST_DIR"; then
+    echo "Support service: $SUPPORT_URL"
+else
+    echo "ERROR: VITE_SUPPORT_URL resolved to $SUPPORT_URL but it is absent from dist/."
+    echo ""
+    echo "The build would ship with the Get help form silently hidden. This means"
+    echo "the value did not reach the bundle: check that .env.production is being"
+    echo "read and that the build ran after it changed."
+    exit 1
+fi
+
 echo "Step 5: Creating zip bundle..."
 mkdir -p "$OUTPUT_DIR"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)

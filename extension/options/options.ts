@@ -879,6 +879,16 @@ function initializeStaticLinks(): void {
         support.waitlistBtn.classList.add('hidden');
         support.waitlistEmail.classList.add('hidden');
         support.waitlistFallback.classList.remove('hidden');
+
+        // The studio pitch offers to open the form above. With no form to open
+        // it has to offer something that works, or it becomes a button that
+        // scrolls to a paragraph explaining why there is nothing to scroll to.
+        document.getElementById('btn-talk-to-us')?.classList.add('hidden');
+        document.getElementById('link-talk-to-us')?.classList.remove('hidden');
+        const note = document.getElementById('about-cta-note');
+        if (note) {
+            note.textContent = 'This build has no support form, so this opens your mail client.';
+        }
     }
 }
 
@@ -889,6 +899,27 @@ for (const name of PAGE_ORDER) {
 
 document.getElementById('link-to-billing')?.addEventListener('click', () => {
     selectPage('billing');
+});
+
+/**
+ * Sends someone from the studio pitch to the form that reaches us, with the
+ * topic already chosen and the cursor in the first field they have to fill.
+ *
+ * Scrolling them to a form and leaving them to work out which of five topics
+ * applies is how an enquiry turns into a closed tab.
+ */
+document.getElementById('btn-talk-to-us')?.addEventListener('click', () => {
+    support.category.value = 'consulting';
+
+    // Focus first, then scroll. Focus is the part that matters, so it must not
+    // be downstream of a scroll that can be unavailable or refused; and the
+    // guarded call keeps a missing scrollIntoView from stranding the caret
+    // wherever it happened to be.
+    support.name.focus({ preventScroll: true });
+    document.getElementById('support-section')?.scrollIntoView?.({
+        behavior: 'smooth',
+        block: 'start',
+    });
 });
 
 // Opening options.html#billing lands on that page, so the popup, the docs and

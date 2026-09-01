@@ -3,6 +3,7 @@ import type { ExtensionMessage } from '../shared/messages';
 import type { CommentOperationResponse } from '../shared/types';
 import { initiateLogin, initiateLogout, getAuthStatus } from './auth';
 import { setLeadForTab, getLeadForTab } from './leadState';
+import { parseLeadUrl } from '../content/urlParser';
 import { apiRequest } from './apiClient';
 import { addPortal, removePortal } from './portalRegistry';
 import { getSettings, updateSettings, validateBackendUrl, parsePortalHost } from '../shared/settings';
@@ -72,8 +73,32 @@ export function handleMessage(
                     sendResponse({ success: true, data: { leadId: null } });
                     return;
                 }
-                const leadId = getLeadForTab(activeTab.id) ?? null;
-                sendResponse({ success: true, data: { leadId } });
+
+                const tracked = getLeadForTab(activeTab.id);
+
+                // undefined means this worker has never heard about the tab,
+                // which is the ordinary state rather than an error: the map
+                // lives in the service worker, Manifest V3 discards the worker
+                // after about thirty seconds of idleness, and the content
+                // script only speaks on navigation. Sitting on a lead, pausing
+                // to read it, then opening the popup is therefore the exact
+                // sequence that used to report no lead at all.
+                //
+                // The tab's own URL is the same evidence the content script
+                // would have sent, and it is authoritative right now, so the
+                // popup is answered from that instead of from a gap in memory.
+                // null, by contrast, is a real answer: the tab was checked and
+                // is not on a lead.
+                if (tracked === undefined) {
+                    const derived = parseLeadUrl(activeTab.url ?? '');
+                    if (derived) {
+                        setLeadForTab(activeTab.id, derived);
+                    }
+                    sendResponse({ success: true, data: { leadId: derived } });
+                    return;
+                }
+
+                sendResponse({ success: true, data: { leadId: tracked } });
             });
             return true;
 

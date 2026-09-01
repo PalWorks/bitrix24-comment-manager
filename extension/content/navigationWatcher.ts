@@ -8,11 +8,23 @@ let lastCheckedUrl: string = '';
 
 /**
  * Starts watching for navigation changes in Bitrix24 SPA pages.
+ *
  * Uses three mechanisms to detect navigation:
  * 1. popstate: browser back/forward buttons
  * 2. hashchange: hash-based routing
  * 3. MutationObserver: DOM mutations that indicate SPA page transitions
  *    (throttled to check URL every NAVIGATION_THROTTLE_MS)
+ *
+ * There used to be a fourth: history.pushState was reassigned here so that a
+ * Bitrix24 route change would announce itself immediately. It never fired. A
+ * content script runs in an isolated world, which shares the page's DOM but not
+ * its JavaScript objects, so the patch applied to this world's `history` while
+ * Bitrix24 went on calling its own untouched one. The MutationObserver was
+ * silently doing all the work, and the only real effect of the patch was to
+ * leave a listener that stopWatching had no reference to remove.
+ *
+ * Detection is therefore bounded by NAVIGATION_THROTTLE_MS, which is what it
+ * has always been in practice.
  *
  * @param callback Invoked with the new URL whenever a navigation change is detected
  */
@@ -30,31 +42,6 @@ export function startWatching(callback: (url: string) => void): void {
 
     window.addEventListener('popstate', popstateHandler);
     window.addEventListener('hashchange', hashchangeHandler);
-
-    // Bitrix24 navigates via history.pushState. Patch it to emit a custom
-    // event so we detect lead-page transitions immediately, without waiting
-    // for a MutationObserver tick.
-    const _pushState = history.pushState.bind(history);
-    const _replaceState = history.replaceState.bind(history);
-
-    history.pushState = function (...args: Parameters<typeof history.pushState>) {
-        _pushState(...args);
-        window.dispatchEvent(new Event('locationchange'));
-    };
-
-    history.replaceState = function (...args: Parameters<typeof history.replaceState>) {
-        _replaceState(...args);
-        window.dispatchEvent(new Event('locationchange'));
-    };
-
-    const locationChangeHandler = () => {
-        const currentUrl = window.location.href;
-        if (currentUrl !== lastCheckedUrl) {
-            lastCheckedUrl = currentUrl;
-            callback(currentUrl);
-        }
-    };
-    window.addEventListener('locationchange', locationChangeHandler);
 
     observer = new MutationObserver(() => {
         if (throttleTimerId !== null) {

@@ -445,6 +445,41 @@ describe('options page', () => {
             expect(
                 (document.getElementById('link-issues-waitlist') as HTMLAnchorElement).href,
             ).toMatch(/github\.com/);
+
+            // Same rule for the studio pitch: it offers to open the form above,
+            // so with no form it must offer something that still works rather
+            // than scroll to an explanation of why it cannot.
+            const talkButton = document.getElementById('btn-talk-to-us') as HTMLButtonElement;
+            const talkLink = document.getElementById('link-talk-to-us') as HTMLAnchorElement;
+            expect(talkButton.classList.contains('hidden')).toBe(true);
+            expect(talkLink.classList.contains('hidden')).toBe(false);
+            expect(talkLink.href).toMatch(/^mailto:/);
+            vi.unstubAllEnvs();
+        });
+
+        it('sends a project enquiry to the form with the topic already chosen', async () => {
+            vi.stubEnv('VITE_SUPPORT_URL', 'https://support.example.com');
+            setupChromeMockWithResponses({
+                [MESSAGE_TYPES.AUTH_STATUS]: { success: true, data: { isAuthenticated: false } },
+            });
+
+            await import('../../../extension/options/options');
+            await vi.runAllTimersAsync();
+
+            const category = document.getElementById('support-category') as HTMLSelectElement;
+            expect(category.value).toBe('bug');
+
+            (document.getElementById('btn-talk-to-us') as HTMLButtonElement).click();
+
+            // Landing someone on a form and leaving them to work out which of
+            // five topics applies is how an enquiry becomes a closed tab.
+            expect(category.value).toBe('consulting');
+            expect(document.activeElement?.id).toBe('support-name');
+
+            // The button is only useful while the form it points at exists.
+            expect(
+                (document.getElementById('btn-talk-to-us') as HTMLButtonElement).classList.contains('hidden'),
+            ).toBe(false);
             vi.unstubAllEnvs();
         });
 

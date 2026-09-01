@@ -3,7 +3,11 @@ import { jwtAuth } from '../middleware/jwtAuth.js';
 import { agentAuth } from '../middleware/agentAuth.js';
 import { leadAuth, LeadAuthenticatedRequest } from '../middleware/leadAuth.js';
 import { createRateLimiter } from '../middleware/rateLimiter.js';
-import { validateCommentSize, detectDuplicate } from '../middleware/commentValidator.js';
+import {
+    validateCommentSize,
+    detectDuplicate,
+    type DuplicateGuardedRequest,
+} from '../middleware/commentValidator.js';
 import { addComment, updateComment, deleteComment } from '../services/bitrix24Client.js';
 import { writeAuditLog } from '../services/auditLogger.js';
 import { BadRequestError } from '../utils/errors.js';
@@ -99,6 +103,12 @@ router.post(
                 timestamp,
             });
         } catch (error) {
+            // The comment did not reach Bitrix24, so the duplicate claim made
+            // on the way in must not stand: the agent's retry is a first
+            // attempt, not a repeat, and rejecting it would strand them behind
+            // a guard against a comment that was never posted.
+            (req as DuplicateGuardedRequest).releaseDuplicate?.();
+
             writeAuditLog({
                 ...buildBaseEntry(authReq, lead_id || 'N/A', comment_body),
                 action_type: 'CREATE',

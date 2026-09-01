@@ -38,6 +38,17 @@ const MAX_QUEUE_SIZE = 100;
 const THROTTLE_INTERVAL_MS = 500;
 
 /**
+ * Ceiling on a single Bitrix24 HTTP call.
+ *
+ * Without one, a portal that accepts the connection and then stops responding
+ * holds the Express request open until the client gives up, and holds a socket
+ * and a queue slot for as long as it takes. Node's fetch has no default
+ * timeout, so the only bound would be the operating system's, which is minutes.
+ * A portal that has not answered in this long is not about to.
+ */
+const REQUEST_TIMEOUT_MS = 20_000;
+
+/**
  * Per-portal request queue. When a portal returns 503 QUERY_LIMIT_EXCEEDED,
  * subsequent requests are buffered here until the portal recovers.
  * Max queue size per portal: MAX_QUEUE_SIZE (100).
@@ -49,6 +60,18 @@ const portalQueues = new Map<string, QueueEntry[]>();
  * Prevents duplicate drain loops from being started concurrently.
  */
 const draining = new Map<string, boolean>();
+
+/**
+ * In-flight token refreshes, keyed by member id.
+ *
+ * Bitrix24 rotates the refresh token on every exchange: the first request
+ * invalidates the token the others are still holding. Several requests for one
+ * member hitting 401 together is the normal case, not an unusual one, so
+ * without this they race, all but one fail, and whichever finishes last writes
+ * a token pair that Bitrix24 has already superseded. Coalescing onto one
+ * exchange means the rotation happens once and every caller gets the result.
+ */
+const refreshInFlight = new Map<string, Promise<string>>();
 
 /**
  * Extracts the portal domain from a Bitrix24 client endpoint URL.
@@ -70,12 +93,28 @@ function delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Exponential backoff for a zero based attempt number, capped. */
+function backoffFor(attempt: number): number {
+    return Math.min(BASE_DELAY_MS * Math.pow(BACKOFF_FACTOR, attempt), MAX_BACKOFF_MS);
+}
+
 /**
- * Refreshes the Bitrix24 access token using the stored refresh token.
- * Updates the in-memory token store on success.
- * Returns the new access token.
+ * True when a fetch rejection is a transport failure rather than a decision by
+ * the far end: a timeout, a reset connection, a name that would not resolve.
+ * Those are worth retrying. A malformed request is not.
  */
-async function refreshAccessToken(memberId: string): Promise<string> {
+function isTransportError(error: unknown): boolean {
+    if (error instanceof BitrixApiError) {
+        return false;
+    }
+    return error instanceof Error;
+}
+
+/**
+ * Performs the token exchange. Callers go through refreshAccessToken, which
+ * ensures only one of these runs per member at a time.
+ */
+async function exchangeRefreshToken(memberId: string): Promise<string> {
     const config = loadConfig();
     const tokens = await getBitrixTokens(memberId);
 
@@ -92,6 +131,7 @@ async function refreshAccessToken(memberId: string): Promise<string> {
             client_secret: config.bitrix24ClientSecret,
             refresh_token: tokens.refreshToken,
         }).toString(),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -117,6 +157,25 @@ async function refreshAccessToken(memberId: string): Promise<string> {
 }
 
 /**
+ * Refreshes the Bitrix24 access token using the stored refresh token, at most
+ * once at a time per member. Concurrent callers await the same exchange and
+ * receive the same new access token.
+ */
+async function refreshAccessToken(memberId: string): Promise<string> {
+    const existing = refreshInFlight.get(memberId);
+    if (existing) {
+        return existing;
+    }
+
+    const attempt = exchangeRefreshToken(memberId).finally(() => {
+        refreshInFlight.delete(memberId);
+    });
+
+    refreshInFlight.set(memberId, attempt);
+    return attempt;
+}
+
+/**
  * Executes a single Bitrix24 REST API request without queuing logic.
  * Handles 401 token refresh and returns the parsed response.
  * Returns null when a 503 is received so the caller can apply backoff.
@@ -132,6 +191,7 @@ async function executeRequest(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...payload, auth: accessToken }),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     if (response.status === 401) {
@@ -174,35 +234,42 @@ async function drainQueue(portal: string): Promise<void> {
     if (draining.get(portal)) return;
     draining.set(portal, true);
 
-    const queue = portalQueues.get(portal);
-    if (!queue) {
-        draining.set(portal, false);
-        return;
-    }
-
-    while (queue.length > 0) {
-        const entry = queue.shift()!;
-
-        try {
-            const result = await callBitrixApiDirect(
-                entry.clientEndpoint,
-                entry.method,
-                entry.payload,
-                entry.accessToken,
-                entry.memberId,
-            );
-            entry.resolve(result);
-        } catch (error) {
-            entry.reject(error instanceof Error ? error : new BitrixApiError(String(error)));
+    try {
+        const queue = portalQueues.get(portal);
+        if (!queue) {
+            return;
         }
 
-        if (queue.length > 0) {
-            await delay(THROTTLE_INTERVAL_MS);
-        }
-    }
+        while (queue.length > 0) {
+            const entry = queue.shift()!;
 
-    portalQueues.delete(portal);
-    draining.set(portal, false);
+            try {
+                const result = await callBitrixApiDirect(
+                    entry.clientEndpoint,
+                    entry.method,
+                    entry.payload,
+                    entry.accessToken,
+                    entry.memberId,
+                );
+                entry.resolve(result);
+            } catch (error) {
+                entry.reject(error instanceof Error ? error : new BitrixApiError(String(error)));
+            }
+
+            if (queue.length > 0) {
+                await delay(THROTTLE_INTERVAL_MS);
+            }
+        }
+
+        // Removed only once the queue is empty, in the same synchronous step as
+        // the check above. While a call is in flight the entry stays in the map
+        // and still reads as queued, so a request arriving mid-drain joins the
+        // queue rather than going direct and defeating the throttle that the
+        // queue exists to impose.
+        portalQueues.delete(portal);
+    } finally {
+        draining.delete(portal);
+    }
 }
 
 /**
@@ -224,13 +291,35 @@ async function callBitrixApiDirect(
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        const result = await executeRequest(
-            clientEndpoint,
-            method,
-            payload,
-            currentToken,
-            memberId,
-        );
+        const isFinalAttempt = attempt === MAX_RETRIES;
+        let result: Awaited<ReturnType<typeof executeRequest>>;
+
+        try {
+            result = await executeRequest(
+                clientEndpoint,
+                method,
+                payload,
+                currentToken,
+                memberId,
+            );
+        } catch (error) {
+            // A dropped connection or a timeout says nothing about whether the
+            // request was wrong, only that it did not arrive intact. On a
+            // congested link that is the common failure, and giving up on the
+            // first one turns a slow network into a failed comment.
+            if (!isTransportError(error) || isFinalAttempt) {
+                throw error;
+            }
+            lastError = error as Error;
+            logger.warn('Bitrix24 request failed in transport, retrying', {
+                memberId,
+                method,
+                attempt: attempt + 1,
+                error: (error as Error).message,
+            });
+            await delay(backoffFor(attempt));
+            continue;
+        }
 
         if (result.refreshedToken) {
             currentToken = result.refreshedToken;
@@ -238,10 +327,15 @@ async function callBitrixApiDirect(
         }
 
         if (result.data === null) {
-            const backoffDelay = Math.min(
-                BASE_DELAY_MS * Math.pow(BACKOFF_FACTOR, attempt),
-                MAX_BACKOFF_MS,
-            );
+            lastError = new BitrixApiError('Bitrix24 QUERY_LIMIT_EXCEEDED');
+
+            // Sleeping after the last attempt delays the caller's error by up
+            // to the full backoff and retries nothing.
+            if (isFinalAttempt) {
+                break;
+            }
+
+            const backoffDelay = backoffFor(attempt);
             logger.warn('Bitrix24 rate limited (503), retrying', {
                 memberId,
                 method,
@@ -249,7 +343,6 @@ async function callBitrixApiDirect(
                 delayMs: backoffDelay,
             });
             await delay(backoffDelay);
-            lastError = new BitrixApiError('Bitrix24 QUERY_LIMIT_EXCEEDED');
             continue;
         }
 
@@ -280,7 +373,10 @@ async function callBitrixApi(
     const portal = extractPortalDomain(clientEndpoint);
     const existingQueue = portalQueues.get(portal);
 
-    if (existingQueue && existingQueue.length > 0) {
+    // Presence in the map, not a non-empty queue, is what marks a portal as
+    // throttled. An empty queue during a drain still means a call is in flight,
+    // and a request that went direct then would sit alongside it.
+    if (existingQueue) {
         if (existingQueue.length >= MAX_QUEUE_SIZE) {
             throw new BitrixApiError(
                 `Request queue full for portal ${portal}. Max ${MAX_QUEUE_SIZE} pending requests.`,
@@ -311,11 +407,21 @@ async function callBitrixApi(
     } catch (error) {
         if (
             error instanceof BitrixApiError &&
-            error.message.includes('QUERY_LIMIT_EXCEEDED')
+            error.message.includes('QUERY_LIMIT_EXCEEDED') &&
+            !portalQueues.has(portal)
         ) {
-            const queue: QueueEntry[] = [];
-            portalQueues.set(portal, queue);
-            drainQueue(portal);
+            portalQueues.set(portal, []);
+            // Deliberately not awaited: the drain outlives this request. It
+            // settles each queued caller itself and cannot reject, but the
+            // catch keeps a future change from becoming an unhandled rejection
+            // that takes the process down.
+            void drainQueue(portal).catch((drainError: unknown) => {
+                logger.error('Bitrix24 queue drain failed', {
+                    portal,
+                    error: drainError instanceof Error ? drainError.message : String(drainError),
+                });
+                portalQueues.delete(portal);
+            });
         }
         throw error;
     }
@@ -417,4 +523,5 @@ export async function getLead(
 export function _resetQueuesForTesting(): void {
     portalQueues.clear();
     draining.clear();
+    refreshInFlight.clear();
 }

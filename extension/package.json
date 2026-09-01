@@ -1,6 +1,6 @@
 {
     "name": "bitrix24-comment-extension-client",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "private": true,
     "description": "Chrome extension for governed comment workflow on Bitrix24 CRM leads",
     "type": "module",

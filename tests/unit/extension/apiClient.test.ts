@@ -22,6 +22,10 @@ async function getApiClient() {
  */
 vi.mock('../../../extension/background/tokenManager', () => ({
     getToken: vi.fn(async () => 'test-jwt-token'),
+    // apiRequest renews a token that is close to expiry before spending a
+    // request on a 401. It is a no-op here; tokenManager's own suite covers
+    // when it decides to refresh.
+    ensureFreshToken: vi.fn(async () => undefined),
 }));
 
 describe('apiClient', () => {

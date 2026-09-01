@@ -47,7 +47,13 @@ export function resetSupportConfig(): void {
     jsonParser = null;
 }
 
-export const CATEGORIES = ['bug', 'question', 'billing', 'hosting-waitlist'] as const;
+export const CATEGORIES = [
+    'bug',
+    'question',
+    'billing',
+    'hosting-waitlist',
+    'consulting',
+] as const;
 type Category = (typeof CATEGORIES)[number];
 
 const ALLOWED_ATTACHMENT_TYPES = new Set([

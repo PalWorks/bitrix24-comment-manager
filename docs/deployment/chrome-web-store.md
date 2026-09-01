@@ -85,7 +85,19 @@ After approval:
 3. Confirm the extension ID matches what is configured in `CORS_ORIGINS`
 
 
-## Upgrading an existing listing to v2.0.0
+## Upgrading an existing listing
+
+### v2.0.1
+
+No manifest change, so no permission review. It is a resilience pass over the
+same feature set, and it uploads like any ordinary update. See the changelog for
+what it fixes.
+
+One thing to check before building: `VITE_SUPPORT_URL` now lives in the
+committed `.env.production` rather than being passed on the command line. Confirm
+it survives into the artifact, which `scripts/build-extension.sh` reports.
+
+### v2.0.0
 
 v2.0.0 adds two things that trigger a **permission review**, which is slower than
 a normal update. Expect several days rather than one.
@@ -122,6 +134,10 @@ the shape they look for:
 - The build carries **no backend URL**. Users configure one on first run. If you
   want a pre-configured build for your own users, set `VITE_BACKEND_URL` before
   building and say so in the listing description.
+- The build **does** carry a support URL, from `.env.production`. That is
+  deliberate: the Get help form has to reach the publisher, so it is not a user
+  setting. A fork should change it or empty it, which hides the form and offers
+  the issue tracker instead.
 - `CORS_ORIGINS` on the backend must contain the published extension ID. That ID
   does not change when you update an existing listing.
 - Privacy tab: the extension stores a session token and the user's chosen

@@ -21,8 +21,19 @@ interface StoredToken {
 /** In-process cache so the hot path avoids an async storage read every request. */
 let cached: StoredToken | null = null;
 let cacheLoaded = false;
+let cacheLoading: Promise<void> | null = null;
 
 let refreshTimerId: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Consecutive refresh attempts that failed to reach a verdict. Resets on the
+ * first success, and drives the retry backoff so a backend that is down does
+ * not get hammered by every installed extension at a fixed interval.
+ */
+let refreshFailures = 0;
+
+const REFRESH_RETRY_BASE_MS = 30_000;
+const REFRESH_RETRY_MAX_MS = 5 * 60_000;
 
 /**
  * Guard that tracks an in-flight refresh promise. When set, concurrent
@@ -39,20 +50,32 @@ async function loadCache(): Promise<void> {
     if (cacheLoaded) {
         return;
     }
-    try {
-        const stored = (await chrome.storage.session.get(TOKEN_KEY)) as {
-            auth?: StoredToken;
-        };
-        cached = stored.auth ?? null;
-    } catch {
-        cached = null;
+
+    // Several handlers can wake the worker at once and all reach for the token.
+    // Without coalescing each issues its own storage read, and a persist landing
+    // between one read and its assignment would be overwritten by the loser.
+    if (!cacheLoading) {
+        cacheLoading = (async () => {
+            try {
+                const stored = (await chrome.storage.session.get(TOKEN_KEY)) as {
+                    auth?: StoredToken;
+                };
+                cached = stored.auth ?? null;
+            } catch {
+                cached = null;
+            }
+            cacheLoaded = true;
+            cacheLoading = null;
+        })();
     }
-    cacheLoaded = true;
+
+    return cacheLoading;
 }
 
 async function persist(value: StoredToken | null): Promise<void> {
     cached = value;
     cacheLoaded = true;
+    cacheLoading = null;
     try {
         if (value) {
             await chrome.storage.session.set({ [TOKEN_KEY]: value });
@@ -79,6 +102,33 @@ export async function storeToken(jwt: string, expiresAt: number): Promise<void> 
 export async function getToken(): Promise<string | null> {
     await loadCache();
     return cached?.jwt ?? null;
+}
+
+/**
+ * Refreshes the token now if it is close enough to expiry to be worth it.
+ *
+ * The scheduled refresh runs on a setTimeout, and Manifest V3 discards timers
+ * whenever it decides the worker has been idle long enough. resumeSession
+ * reinstates the schedule when the worker next starts, but nothing starts a
+ * worker just because a token is ageing: leave the browser open overnight and
+ * the timer that should have fired at 3am never existed to fire.
+ *
+ * Checking here closes that gap without a new permission, because the moment an
+ * agent actually uses the extension is a moment the worker is awake and a
+ * request is about to be made anyway.
+ */
+export async function ensureFreshToken(): Promise<void> {
+    await loadCache();
+
+    if (!cached) {
+        return;
+    }
+
+    const refreshAtMs = (cached.expiresAt - CONFIG.JWT_REFRESH_BUFFER_SECONDS) * 1000;
+
+    if (Date.now() >= refreshAtMs) {
+        await refreshToken();
+    }
 }
 
 /**
@@ -192,8 +242,53 @@ export async function refreshToken(): Promise<void> {
 }
 
 /**
+ * Handles a refresh that did not complete for a reason that says nothing about
+ * whether the session is still good: a timeout, a dropped connection, a backend
+ * that answered 502 through a proxy.
+ *
+ * The token in hand is still valid until its own expiry, so throwing it away
+ * here would log the agent out over a momentary loss of signal, mid-sentence,
+ * with a comment half typed. Instead the existing token is kept and the refresh
+ * is retried, backing off, for as long as there is validity left to save. Only
+ * when the token has actually expired is the session given up.
+ */
+async function handleTransientRefreshFailure(reason: string): Promise<void> {
+    const stillValid = cached !== null && cached.expiresAt * 1000 > Date.now();
+
+    if (!stillValid) {
+        await clearToken();
+        return;
+    }
+
+    refreshFailures += 1;
+
+    const backoffMs = Math.min(
+        REFRESH_RETRY_BASE_MS * Math.pow(2, refreshFailures - 1),
+        REFRESH_RETRY_MAX_MS,
+    );
+    const msUntilExpiry = cached!.expiresAt * 1000 - Date.now();
+
+    // Never schedule past the point where the token dies anyway; at that moment
+    // the retry becomes the last chance rather than one of many.
+    const delayMs = Math.max(0, Math.min(backoffMs, msUntilExpiry));
+
+    console.warn(
+        `[tokenManager] Token refresh failed (${reason}). Keeping the current token and retrying in ${Math.round(delayMs / 1000)}s.`,
+    );
+
+    clearRefreshTimer();
+    refreshTimerId = setTimeout(() => {
+        void refreshToken();
+    }, delayMs);
+}
+
+/**
  * Performs the actual token refresh network call.
- * On failure, clears the token to trigger a re-authentication state.
+ *
+ * A refusal by the backend clears the token, because the session really is
+ * over. A failure to reach the backend does not: see
+ * handleTransientRefreshFailure.
+ *
  * Enforces a 30 second timeout via AbortController.
  */
 async function performRefresh(): Promise<void> {
@@ -222,16 +317,31 @@ async function performRefresh(): Promise<void> {
             signal: controller.signal,
         });
 
-        if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+            // The backend has rejected this token outright: expired, revoked, or
+            // signed by a key that no longer applies. No amount of retrying
+            // changes that answer.
             await clearToken();
             return;
         }
 
+        if (!response.ok) {
+            await handleTransientRefreshFailure(`HTTP ${response.status}`);
+            return;
+        }
+
         const data = (await response.json()) as AuthLoginResponse;
+        refreshFailures = 0;
         await persist({ jwt: data.jwt, expiresAt: data.expiresAt });
         scheduleRefresh(data.expiresAt);
-    } catch {
-        await clearToken();
+    } catch (error) {
+        const reason =
+            error instanceof DOMException && error.name === 'AbortError'
+                ? 'timed out'
+                : error instanceof Error
+                    ? error.message
+                    : 'network error';
+        await handleTransientRefreshFailure(reason);
     } finally {
         clearTimeout(timeoutId);
     }
@@ -243,6 +353,8 @@ async function performRefresh(): Promise<void> {
 export function _resetForTesting(): void {
     cached = null;
     cacheLoaded = false;
+    cacheLoading = null;
     refreshInProgress = null;
+    refreshFailures = 0;
     clearRefreshTimer();
 }

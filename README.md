@@ -292,9 +292,12 @@ Worth knowing before you deploy:
 
 - **Leads only.** Deals, contacts, companies, and smart process automation
   entities are not supported yet.
-- **Single instance.** The JWT blacklist, OAuth state, pending sessions, and rate
-  limiter windows are per process. Running several instances behind a load
-  balancer needs those moved to a shared store; see the roadmap.
+- **Single instance.** The JWT blacklist, OAuth state, pending sessions, rate
+  limiter windows and duplicate detection are per process, and the JWT blacklist
+  does not survive a restart, so a token revoked by logging out becomes usable
+  again until it expires on its own. Running several instances behind a load
+  balancer needs all of it moved to a shared store; see the roadmap. Bitrix24
+  OAuth tokens are the exception: those are persisted and encrypted.
 - **The comment list is local.** The popup shows comments created in that session
   rather than the full Bitrix24 timeline.
 - **Retention needs the MySQL event scheduler**, or an external cron calling
@@ -312,6 +315,25 @@ Worth knowing before you deploy:
 
 Issues and pull requests are welcome. Start with
 [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Who builds this
+
+Built and maintained by **PalWorks**, an experienced Bitrix24 partner working out
+of Abu Dhabi, UAE and Madurai, India. This came out of a real deployment rather
+than a spare afternoon, which is why the audit log and the authorization chain
+are the parts with the most care in them.
+
+We take on client work in three areas: **Bitrix24** (implementation, migration,
+custom applications, REST integrations, portal automation), **eCommerce
+software** (storefronts, order and inventory systems, payment and logistics
+integrations), and **AI agents and workflows** (agents that do real work inside
+existing systems rather than another chat window beside them).
+
+Reach us at [support@palworks.ai](mailto:support@palworks.ai), or from the Help
+page inside the extension.
+
+None of that changes anything about the licence below: the code is MIT, it runs
+entirely on your own infrastructure, and it needs nothing from us.
 
 ## License
 

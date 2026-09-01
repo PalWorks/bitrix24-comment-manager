@@ -56,13 +56,26 @@ export async function initiateLogin(portal?: string): Promise<AuthState> {
     });
     const winId = win.id;
 
+    // Closing the window is how a person cancels a login. Without watching for
+    // it, the poll below carries on for its full five minutes against a window
+    // that is no longer on screen, and the popup keeps saying it is signing in.
+    let windowClosed = false;
+    const onWindowRemoved = (closedId: number) => {
+        if (closedId === winId) {
+            windowClosed = true;
+        }
+    };
+    chrome.windows.onRemoved.addListener(onWindowRemoved);
+
     try {
-        const result = await pollForSession(state);
+        const result = await pollForSession(state, () => windowClosed);
 
         if (!result) {
             return {
                 isAuthenticated: false,
-                error: 'Authorization did not complete. Please try again.',
+                error: windowClosed
+                    ? 'The sign in window was closed before authorization finished.'
+                    : 'Authorization did not complete. Please try again.',
             };
         }
 
@@ -75,6 +88,7 @@ export async function initiateLogin(portal?: string): Promise<AuthState> {
             expiresAt: result.expiresAt,
         };
     } finally {
+        chrome.windows.onRemoved.removeListener(onWindowRemoved);
         if (winId !== undefined) {
             chrome.windows.remove(winId).catch(() => { });
         }
@@ -82,11 +96,18 @@ export async function initiateLogin(portal?: string): Promise<AuthState> {
 }
 
 /**
- * Polls the backend's /auth/poll endpoint until the OAuth session JWT is ready
- * or the timeout is reached.
+ * Polls the backend's /auth/poll endpoint until the OAuth session JWT is ready,
+ * the caller cancels, or the timeout is reached.
+ *
+ * @param isCancelled Consulted between attempts. When it returns true the poll
+ *                    makes one final attempt and then stops, because a user who
+ *                    closes the window a moment after authorizing has completed
+ *                    the flow, and their session is already waiting on the
+ *                    backend to be collected.
  */
 async function pollForSession(
     state: string,
+    isCancelled: () => boolean = () => false,
 ): Promise<{ jwt: string; expiresAt: number; memberId: string; domain: string } | null> {
     const backendUrl = await getBackendUrl();
 
@@ -95,6 +116,7 @@ async function pollForSession(
     }
 
     const deadline = Date.now() + POLL_TIMEOUT_MS;
+    let lastAttempt = false;
 
     while (Date.now() < deadline) {
         await sleep(POLL_INTERVAL_MS);
@@ -109,26 +131,29 @@ async function pollForSession(
                 return null;
             }
 
-            if (!response.ok) {
-                continue;
-            }
+            if (response.ok) {
+                const data = await response.json();
 
-            const data = await response.json();
-
-            if (data.pending) {
-                continue;
-            }
-
-            if (data.jwt && data.expiresAt && data.memberId && data.domain) {
-                return data as {
-                    jwt: string;
-                    expiresAt: number;
-                    memberId: string;
-                    domain: string;
-                };
+                if (data.jwt && data.expiresAt && data.memberId && data.domain) {
+                    return data as {
+                        jwt: string;
+                        expiresAt: number;
+                        memberId: string;
+                        domain: string;
+                    };
+                }
             }
         } catch {
-            continue;
+            // A failed poll is expected on a slow link. Fall through and either
+            // try again or stop, depending on cancellation.
+        }
+
+        if (lastAttempt) {
+            return null;
+        }
+
+        if (isCancelled()) {
+            lastAttempt = true;
         }
     }
 

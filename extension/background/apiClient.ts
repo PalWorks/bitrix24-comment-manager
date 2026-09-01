@@ -1,7 +1,7 @@
 import { CONFIG } from '../shared/constants';
 import { getBackendUrl } from '../shared/settings';
 import type { ApiErrorResponse } from '../shared/types';
-import { getToken } from './tokenManager';
+import { getToken, ensureFreshToken } from './tokenManager';
 
 export interface ApiRequestOptions {
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -54,6 +54,9 @@ export async function apiRequest<T>(
     };
 
     if (requireAuth) {
+        // Renews a token the scheduled refresh may never have got to, before
+        // spending the request on a 401.
+        await ensureFreshToken();
         const token = await getToken();
         if (!token) {
             return {
@@ -78,7 +81,25 @@ export async function apiRequest<T>(
             signal: controller.signal,
         });
 
-        const json = await response.json();
+        // Not everything that answers on the backend's URL is the backend. A
+        // proxy timing out, a captive portal, or a tunnel that has gone down
+        // all reply with HTML, and parsing that as JSON throws a SyntaxError
+        // whose message ("Unexpected token <") tells the agent nothing about
+        // what to do next. The status code does.
+        let json: unknown;
+        try {
+            json = await response.json();
+        } catch {
+            return {
+                success: false,
+                error: {
+                    code: response.ok ? 'BAD_RESPONSE' : 'API_ERROR',
+                    message: response.ok
+                        ? 'The backend replied with something other than JSON. Check that the backend URL points at the API and not at a proxy or login page.'
+                        : `The backend returned ${response.status} ${response.statusText || ''}`.trim(),
+                },
+            };
+        }
 
         if (!response.ok) {
             const errorResponse = json as ApiErrorResponse;

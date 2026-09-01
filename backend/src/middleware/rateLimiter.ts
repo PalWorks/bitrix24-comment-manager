@@ -71,10 +71,16 @@ export function stopPruneTimer(): void {
 startPruneTimer();
 
 /**
- * Creates a per-agent sliding window rate limiter middleware.
+ * Creates a per-agent fixed window rate limiter middleware.
  *
  * Authorization chain step covered:
  *   Step 7: Per-agent rate limit check
+ *
+ * The window is fixed, not sliding: it starts at the first request and resets
+ * whole. An agent can therefore send up to twice the limit across a window
+ * boundary, which is the accepted cost of keeping one counter per agent rather
+ * than a timestamp list. The limit exists to stop a runaway loop, not to meter
+ * usage precisely, and the burst is bounded either way.
  *
  * When the limit is exceeded, throws RateLimitedError with the
  * number of seconds until the window resets.
@@ -124,7 +130,8 @@ export function resetRateLimiterState(): void {
 }
 
 /**
- * Creates an IP-based sliding window rate limiter middleware.
+ * Creates an IP-based fixed window rate limiter middleware, with the same
+ * window semantics as createRateLimiter above.
  *
  * Designed for unauthenticated endpoints (e.g. auth routes) where
  * no JWT user object is available. Keys rate limiting on the

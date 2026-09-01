@@ -23,6 +23,21 @@ interface DuplicateEntry {
 const duplicateStore: DuplicateEntry[] = [];
 
 /**
+ * A request that has claimed a duplicate slot and can give it back.
+ *
+ * The claim has to be made before the comment is sent, or two requests in
+ * flight together would both pass the check. But a claim that outlives a failed
+ * send is worse than no check at all: the agent's comment never reached
+ * Bitrix24, they press the button again, and the only thing standing in their
+ * way is our own record of the attempt that failed. That is the exact shape of
+ * a slow or dropped connection, so the route releases the claim when the send
+ * does not succeed.
+ */
+export interface DuplicateGuardedRequest extends Request {
+    releaseDuplicate?: () => void;
+}
+
+/**
  * Middleware that validates comment body size.
  *
  * Authorization chain step covered:
@@ -103,7 +118,15 @@ export function detectDuplicate(req: Request, _res: Response, next: NextFunction
         );
     }
 
-    duplicateStore.push({ hash, leadId, agentId, timestamp: now });
+    const entry: DuplicateEntry = { hash, leadId, agentId, timestamp: now };
+    duplicateStore.push(entry);
+
+    (req as DuplicateGuardedRequest).releaseDuplicate = () => {
+        const index = duplicateStore.indexOf(entry);
+        if (index !== -1) {
+            duplicateStore.splice(index, 1);
+        }
+    };
 
     next();
 }
@@ -113,9 +136,20 @@ export function detectDuplicate(req: Request, _res: Response, next: NextFunction
  */
 function pruneExpiredEntries(windowMs: number): void {
     const cutoff = Date.now() - windowMs;
-    const remaining = duplicateStore.filter(entry => entry.timestamp >= cutoff);
-    duplicateStore.length = 0;
-    duplicateStore.push(...remaining);
+
+    // Entries are appended in timestamp order, so everything expired sits at
+    // the front and one splice removes it. The previous filter-and-respread
+    // rebuilt the whole array on every request, and `push(...remaining)` passes
+    // each element as an argument, which throws RangeError once the store grows
+    // past the engine's argument limit.
+    let expired = 0;
+    while (expired < duplicateStore.length && duplicateStore[expired].timestamp < cutoff) {
+        expired++;
+    }
+
+    if (expired > 0) {
+        duplicateStore.splice(0, expired);
+    }
 }
 
 /**

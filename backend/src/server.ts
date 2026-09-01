@@ -155,21 +155,77 @@ const server = app.listen(config.port, () => {
     });
 });
 
+/**
+ * How long a shutdown may take before the process stops waiting.
+ *
+ * server.close() only fires once every open connection has ended, and a
+ * keep-alive client that sends nothing keeps its connection open indefinitely.
+ * Without a ceiling the container hangs until the orchestrator escalates to
+ * SIGKILL, which is the one outcome graceful shutdown exists to avoid: it kills
+ * the process mid-write, with audit rows still unflushed.
+ */
+const SHUTDOWN_TIMEOUT_MS = 15_000;
+
+let shuttingDown = false;
+
 function gracefulShutdown(signal: string) {
+    // Docker sends SIGTERM and, on an unresponsive container, follows with more
+    // signals. Re-entering here would start a second drain over a closing pool.
+    if (shuttingDown) {
+        return;
+    }
+    shuttingDown = true;
+
     logger.info(`Received ${signal}. Shutting down gracefully.`);
     stopCleanupTimers();
     stopPruneTimer();
+
+    const forceExit = setTimeout(() => {
+        logger.error('Shutdown did not complete in time. Exiting anyway.', {
+            timeoutMs: SHUTDOWN_TIMEOUT_MS,
+        });
+        process.exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
+    forceExit.unref();
+
     server.close(async () => {
         logger.info('HTTP server closed.');
-        await drainPendingWrites();
-        logger.info('All pending audit writes drained.');
-        await shutdownPool();
-        logger.info('All resources released. Exiting.');
+        try {
+            await drainPendingWrites();
+            logger.info('All pending audit writes drained.');
+            await shutdownPool();
+            logger.info('All resources released. Exiting.');
+        } catch (error) {
+            logger.error('Shutdown encountered an error', {
+                error: error instanceof Error ? error.message : String(error),
+            });
+        }
+        clearTimeout(forceExit);
         process.exit(0);
     });
 }
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+/**
+ * A rejection nobody handled would otherwise terminate the process with only
+ * Node's own trace, which names the file but not the request or the deployment.
+ * Logging it in the same shape as everything else is what makes it findable at
+ * three in the morning; the process still exits, because state after an
+ * unhandled rejection is not something to keep serving from.
+ */
+process.on('unhandledRejection', (reason: unknown) => {
+    logger.error('Unhandled promise rejection', {
+        reason: reason instanceof Error ? reason.message : String(reason),
+        stack: reason instanceof Error ? reason.stack : undefined,
+    });
+    gracefulShutdown('unhandledRejection');
+});
+
+process.on('uncaughtException', (error: Error) => {
+    logger.error('Uncaught exception', { message: error.message, stack: error.stack });
+    gracefulShutdown('uncaughtException');
+});
 
 export { app };

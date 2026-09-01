@@ -8,6 +8,8 @@ coverage/
 !.env.example
 !.env.docker.example
 !.env.support.example
+# Public build time URLs for the published extension, committed deliberately.
+!.env.production
 *.tsbuildinfo
 .vite/
 *.log

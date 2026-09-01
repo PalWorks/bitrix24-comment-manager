@@ -2,6 +2,96 @@
 
 All notable changes to the Bitrix24 Comment Manager are documented in this file. Entries are ordered from newest to oldest.
 
+## [2.0.1] Resilience audit
+
+A pass over the whole codebase looking for what breaks under a bad network and
+under concurrency, rather than under a wrong input. Nothing here changes how the
+extension is configured or deployed, and no migration is needed.
+
+### Fixed
+
+- **A slow portal could hold a request open indefinitely.** No outbound call had
+  a deadline, and Node's `fetch` has no default one, so a Bitrix24 that accepted
+  a connection and then stopped answering held the socket, the Express request
+  and a queue slot until the operating system gave up. Every call the backend
+  makes now carries a 20 second timeout.
+- **Concurrent 401s raced over the refresh token.** Bitrix24 rotates the refresh
+  token on use, so when several requests for one member expired together, the
+  first exchange invalidated the token the rest were holding, and the last to
+  finish wrote back a pair Bitrix24 had already superseded. Refreshes now
+  coalesce per member.
+- **A failed comment blocked its own retry.** The duplicate guard claimed the
+  comment hash before the comment was sent and kept the claim when the send
+  failed, so an agent whose connection dropped was refused when they tried again
+  with "already submitted recently". The claim is released when the send does
+  not succeed; a successful comment still holds it for the full window.
+- **A dropped connection failed the request outright.** Transport failures are
+  now retried with the same backoff as a rate limit. Retrying stops as soon as
+  the far end gives an actual answer, since that is a decision rather than a
+  failure to reach one.
+- **A timed out token refresh logged the agent out.** The extension cleared its
+  JWT on any refresh failure, including a timeout on a congested link, ending a
+  session that was still valid for another five minutes. It now distinguishes a
+  refusal (401 or 403, cleared) from a failure to reach the backend (kept, and
+  retried with backoff until the token would expire anyway).
+- **The popup reported no lead after the service worker slept.** Lead state
+  lives in the worker, Manifest V3 discards an idle worker after about thirty
+  seconds, and the content script only speaks on navigation, so reading a lead
+  for a minute and then opening the popup showed nothing. The worker now falls
+  back to the active tab's own URL, which is the same evidence the content
+  script would have sent.
+- **A login could be stored under a shared placeholder.** An OAuth callback with
+  no member id was filed as `unknown`, and tokens are looked up by that id
+  alone, so two unattributed logins from different portals would collide in one
+  row. Such a callback is now refused.
+- **The last retry slept its full backoff before failing.** Up to eight seconds
+  added to an error the caller was always going to receive.
+- **Cancelling a login left it running.** Closing the authorization window now
+  stops the poll, after one final attempt in case the window was closed just
+  after authorizing.
+- **A non-JSON reply surfaced as a parse error.** A proxy, captive portal or
+  dead tunnel answers with HTML; the agent saw "Unexpected token <". The status
+  code is reported instead, and a 200 that is not JSON says so.
+- **The content script logged an error on every navigation.** Its lead messages
+  are one way, so the promise `sendMessage` returns always rejected, unhandled,
+  in the console of the customer's own Bitrix24 page.
+- **`history.pushState` was patched in the wrong world.** A content script runs
+  in an isolated world, so the patch applied to its own `history` while Bitrix24
+  went on calling an untouched one. It never fired, the MutationObserver was
+  doing all the work, and the only lasting effect was a listener that could not
+  be removed. Removed.
+- **Logging out after a restart reported no session.** The result was taken from
+  the in-process cache alone, which is empty after a restart while the tokens
+  are still on disk.
+- **Shutdown could hang until SIGKILL.** `server.close()` waits for every
+  keep-alive connection, and pending login timers held the event loop open.
+  There is now a 15 second ceiling, and those timers are unreferenced.
+- **The duplicate store rebuilt itself on every request** and passed each entry
+  as a function argument, which throws once the store outgrows the engine's
+  argument limit.
+
+### Added
+
+- `VITE_SUPPORT_URL` is committed in `.env.production`. It was passed on the
+  command line, so a build that forgot it shipped with the Get help form
+  silently hidden and nothing anywhere saying so.
+- Unhandled rejections and uncaught exceptions are logged in the same shape as
+  everything else before the process exits.
+- A token close to expiry is renewed before a request is spent on it, which
+  covers the case where Manifest V3 discarded the scheduled refresh and nothing
+  woke the worker to reinstate it.
+- "Who builds this" on the Help page, and a matching support topic, for teams
+  who want Bitrix24, eCommerce or AI agent work done rather than just the
+  extension.
+- 23 tests covering the above.
+
+### Changed
+
+- The per-portal request queue now holds a request that arrives mid-drain,
+  instead of letting it go direct and defeat the throttle the queue exists to
+  impose.
+- The rate limiters are documented as fixed window, which is what they are.
+
 ## [2.0.0] Open Source Release
 
 The project is now portable: any Bitrix24 team can run it, against any portal,

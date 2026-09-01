@@ -39,6 +39,8 @@ describe('Comment CRUD Integration', () => {
     const testLeadId = '12345';
     const testCommentId = '99001';
 
+    let failNextCommentAdd = false;
+
     beforeAll(async () => {
         /**
          * Mock Bitrix24 REST API and OAuth token endpoint.
@@ -83,7 +85,14 @@ describe('Comment CRUD Integration', () => {
             });
         });
 
+        // Lets one test make the far end fail exactly once, which is what a
+        // dropped connection looks like from here.
         mockBitrixApp.post('/rest/crm.timeline.comment.add', (_req, res) => {
+            if (failNextCommentAdd) {
+                failNextCommentAdd = false;
+                res.status(500).json({ error: 'INTERNAL', error_description: 'portal unavailable' });
+                return;
+            }
             res.json({ result: testCommentId });
         });
 
@@ -249,6 +258,61 @@ describe('Comment CRUD Integration', () => {
 
             const secondData = await second.json();
             expect(secondData.error.code).toBe('DUPLICATE');
+        });
+
+        it('lets an agent retry a comment that failed to reach Bitrix24', async () => {
+            // The duplicate claim is made before the comment is sent, so that
+            // two requests in flight together cannot both pass. But when the
+            // send fails, nothing was posted, and the retry is a first attempt
+            // rather than a repeat. Holding the claim would leave the agent
+            // blocked by our record of an attempt that never landed, which is
+            // precisely what a slow or dropped connection produces.
+            const body = {
+                lead_id: testLeadId,
+                comment_body: 'This one fails on the way out, then succeeds.',
+            };
+
+            failNextCommentAdd = true;
+
+            const failed = await fetch(baseUrl('/api/comments'), {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify(body),
+            });
+            expect(failed.status).toBeGreaterThanOrEqual(400);
+
+            const retry = await fetch(baseUrl('/api/comments'), {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify(body),
+            });
+
+            expect(retry.status).toBe(200);
+            const retryData = await retry.json();
+            expect(retryData.success).toBe(true);
+        });
+
+        it('still rejects a genuine repeat after a successful post', async () => {
+            // The release must be scoped to the failure. A successful comment
+            // still holds its claim for the dedup window.
+            const body = {
+                lead_id: testLeadId,
+                comment_body: 'Posted once, and only once.',
+            };
+
+            const first = await fetch(baseUrl('/api/comments'), {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify(body),
+            });
+            expect(first.status).toBe(200);
+
+            const second = await fetch(baseUrl('/api/comments'), {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify(body),
+            });
+            expect(second.status).toBe(409);
         });
 
         it('should reject when rate limited', async () => {

@@ -148,11 +148,16 @@ export async function getBitrixTokens(memberId: string): Promise<BitrixTokens | 
  * Returns true when the member had cached tokens.
  */
 export async function removeBitrixTokens(memberId: string): Promise<boolean> {
-    const existed = cache.delete(memberId);
+    let existed = cache.delete(memberId);
 
     if (isPersistent()) {
         try {
-            await getPool().execute(DELETE_SQL, [memberId]);
+            // The row counts as much as the cache entry. After a restart the
+            // cache is empty while the tokens are still on disk, so reporting
+            // only the cache would call a real logout a no-op.
+            const [result] = await getPool().execute(DELETE_SQL, [memberId]);
+            const affected = (result as { affectedRows?: number }).affectedRows ?? 0;
+            existed = existed || affected > 0;
         } catch (error) {
             logger.error('Failed to delete Bitrix24 tokens', {
                 memberId,

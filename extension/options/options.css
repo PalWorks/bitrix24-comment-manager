@@ -822,3 +822,101 @@ textarea.field-input {
     height: 1px;
     overflow: hidden;
 }
+
+/* ==================================================================== *
+   Who builds this
+   Sits at the foot of Help, after a person has already been given
+   everything they need for free. Where it sits is what keeps it from
+   reading as a pitch, so the styling stays quiet: no accent fill and no
+   border weight that competes with the support form above it.
+ * ==================================================================== */
+
+.btn-secondary {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    color: var(--blue);
+    background: var(--surface);
+    border: 1px solid var(--blue);
+    border-radius: var(--r-sm);
+    cursor: pointer;
+}
+
+.btn-secondary:hover {
+    background: var(--blue-wash);
+}
+
+/* The fallback CTA is an anchor, so it needs the parts a button gets free. */
+a.btn-secondary {
+    display: inline-block;
+    text-decoration: none;
+}
+
+.btn-secondary:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* No border or background of its own: .row-body already draws the card, and a
+   second frame inside the first reads as a mistake rather than a grouping. */
+.about-card {
+    min-width: 0;
+}
+
+.about-lead {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ink);
+}
+
+.about-card p {
+    margin: 12px 0 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--muted);
+}
+
+.about-services {
+    list-style: none;
+    margin: 16px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.about-services li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: 14px;
+    border-left: 2px solid var(--line);
+}
+
+.about-services b {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.about-services span {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--muted);
+}
+
+.about-cta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 20px 0 0;
+}
+
+.about-cta-note {
+    font-size: 12px;
+    color: var(--muted);
+}

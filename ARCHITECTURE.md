@@ -70,7 +70,7 @@ This is the most complex flow and involves all components:
 7. **Service worker** calls `apiClient.apiRequest('POST /api/comments', { lead_id, comment_body })` with the JWT.
 8. **Backend middleware chain** executes: jwtAuth → agentAuth → leadAuth → rateLimiter → commentValidator.
 9. **Comment route handler** calls `bitrix24Client.addTimelineComment(leadId, body)`.
-10. **bitrix24Client** queues the request (exponential backoff on 429s) and calls the Bitrix24 REST API.
+10. **bitrix24Client** queues the request (exponential backoff on 503 QUERY_LIMIT_EXCEEDED, and on a dropped connection) and calls the Bitrix24 REST API. Every call carries a 20 second deadline, and token refreshes are coalesced per member so concurrent 401s cannot race over Bitrix24's rotating refresh token.
 11. **Route handler** fires `writeAuditLog()` (non-blocking) and returns the result.
 12. **Response** propagates back: backend → apiClient → service worker → popup → UI update.
 
@@ -80,7 +80,7 @@ This is the most complex flow and involves all components:
 |---|---|---|---|
 | Popup/Content to Service Worker | `chrome.runtime.sendMessage` | Same extension origin | None (Chrome manages) |
 | Service Worker to Backend | HTTPS `fetch` | `Authorization: Bearer <JWT>` | 30s AbortController |
-| Backend to Bitrix24 REST | HTTPS `fetch` | `?auth=<bitrix_access_token>` | Request queue with backoff |
+| Backend to Bitrix24 REST | HTTPS `fetch` | `?auth=<bitrix_access_token>` | 20s per call, plus a request queue with backoff |
 | Backend to MySQL | TCP (mysql2 pool) | `DATABASE_URL` connection string | mysql2 pool defaults |
 
 ## Extension Module Responsibilities

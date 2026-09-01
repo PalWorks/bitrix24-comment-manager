@@ -111,7 +111,13 @@ export function installChromeMock(): ChromeMock {
             }),
         },
         tabs: { query: vi.fn(async () => []), onRemoved: { addListener: vi.fn() } },
-        windows: { create: vi.fn(async () => ({ id: 1 })), remove: vi.fn(async () => undefined) },
+        windows: {
+            create: vi.fn(async () => ({ id: 1 })),
+            remove: vi.fn(async () => undefined),
+            // The login flow subscribes to this so it can stop polling when the
+            // person closes the authorization window.
+            onRemoved: { addListener: vi.fn(), removeListener: vi.fn() },
+        },
     };
 
     (globalThis as unknown as { chrome: unknown }).chrome = chromeMock;

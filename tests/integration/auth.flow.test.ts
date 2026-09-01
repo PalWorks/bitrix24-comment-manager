@@ -34,6 +34,9 @@ describe('Auth Flow Integration', () => {
     let mockBitrixServer: Server;
     let mockBitrixPort: number;
 
+    /** Makes the mock token endpoint answer without identifying an account. */
+    let omitMemberId = false;
+
     beforeAll(async () => {
         mockBitrixApp = express();
         mockBitrixApp.use(express.urlencoded({ extended: true }));
@@ -53,13 +56,19 @@ describe('Auth Flow Integration', () => {
                 return;
             }
 
-            res.json({
+            const body: Record<string, unknown> = {
                 access_token: 'bitrix-access-token-123',
                 refresh_token: 'bitrix-refresh-token-456',
                 expires_in: 3600,
                 client_endpoint: `https://${TEST_PORTAL}/rest/`,
-                member_id: 'member-integration-test',
-            });
+            };
+
+            // One test needs a token response that identifies nobody.
+            if (!omitMemberId) {
+                body.member_id = 'member-integration-test';
+            }
+
+            res.json(body);
         });
 
         mockBitrixServer = await new Promise<Server>((resolve) => {
@@ -255,6 +264,32 @@ describe('Auth Flow Integration', () => {
             );
 
             expect(response.status).toBe(403);
+        });
+
+        it('refuses a login Bitrix24 could not attribute to an account', async () => {
+            // Tokens are stored under the member id and later looked up by it
+            // alone. A shared placeholder for every unattributed login would
+            // file two portals in one row, and hand whichever arrived second
+            // the other's credentials.
+            omitMemberId = true;
+            try {
+                const loginRes = await fetch(baseUrl(`/auth/login?portal=${TEST_PORTAL}`));
+                const { state } = await loginRes.json();
+
+                const response = await fetch(
+                    baseUrl(
+                        `/auth/callback?code=valid-auth-code&state=${state}&domain=${TEST_PORTAL}`,
+                    ),
+                );
+
+                expect(response.status).toBe(502);
+
+                const pollRes = await fetch(baseUrl(`/auth/poll?state=${state}`));
+                const pollData = await pollRes.json();
+                expect(pollData.jwt).toBeUndefined();
+            } finally {
+                omitMemberId = false;
+            }
         });
     });
 
