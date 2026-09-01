@@ -1,0 +1,7 @@
+# Everything here is meant to be found. There is nothing behind a login, and
+# the support form is a POST to a different origin, so there is nothing a
+# crawler can reach that it should not.
+User-agent: *
+Allow: /
+
+Sitemap: https://palworks.github.io/bitrix24-comment-manager/sitemap.xml

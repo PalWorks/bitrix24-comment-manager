@@ -907,3 +907,214 @@ img { max-width: 100%; display: block; }
 .back-link:hover {
     text-decoration: underline;
 }
+
+/* ------------------------------------------------------------------ *
+   Hosting.
+   Two routes side by side, then what the hosted one would cost. The
+   pricing sits under a card that says it is not open, so the numbers
+   have to read as indicative rather than as a checkout: no accent
+   fill, no most popular badge, nothing that looks like a buy button.
+ * ------------------------------------------------------------------ */
+
+.cards-2 {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.tag {
+    display: inline-block;
+    justify-self: start;
+    padding: 3px 9px;
+    border-radius: var(--r-pill);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--line-soft);
+    border: 1px solid var(--line);
+}
+
+.tag-live {
+    color: var(--blue-deep);
+    background: var(--blue-wash);
+    border-color: transparent;
+}
+
+.inline-link {
+    color: var(--blue-deep);
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+}
+
+.inline-link:hover {
+    border-bottom-color: currentColor;
+}
+
+.sep {
+    /* --line is a border colour: against a card it reads as nothing at all,
+       and the two links run together as one gap. */
+    color: var(--muted);
+    margin: 0 6px;
+}
+
+.plans {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-top: 28px;
+}
+
+.plan {
+    display: grid;
+    gap: 4px;
+    align-content: start;
+    padding: 22px;
+    border-radius: var(--r-md);
+    border: 1px solid var(--line);
+    background: var(--surface);
+}
+
+.plan-name {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.plan-price {
+    font-size: 30px;
+    font-weight: 800;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.plan-price span {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted);
+}
+
+.plan ul {
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 7px;
+}
+
+.plan li {
+    font-size: 14px;
+    color: var(--muted);
+    padding-left: 16px;
+    position: relative;
+}
+
+.plan li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: .55em;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--line);
+}
+
+.plans-note {
+    margin-top: 20px;
+    max-width: 68ch;
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--muted);
+}
+
+.plans-note b {
+    color: var(--ink-soft);
+}
+
+.waitlist {
+    margin-top: 28px;
+    display: grid;
+    gap: 8px;
+    max-width: 460px;
+}
+
+.waitlist label {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+.waitlist-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.waitlist-row input {
+    flex: 1 1 220px;
+    min-width: 0;
+}
+
+/* The hint styling is scoped to .field, and this one sits directly in the
+   form, so without this it renders at body size and reads as a promise
+   rather than a footnote. */
+.waitlist .hint {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--muted);
+}
+
+/* ------------------------------------------------------------------ *
+   Who builds this.
+   Placed after everything has been given away free, so it reads as an
+   offer rather than a pitch. The services list is a plain rail: no
+   icons, no cards, nothing that competes with the product above it.
+ * ------------------------------------------------------------------ */
+
+.about {
+    display: grid;
+    gap: 36px;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    align-items: start;
+}
+
+.about-copy p {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--muted);
+    margin-bottom: 14px;
+}
+
+.about-copy b {
+    color: var(--ink);
+}
+
+.services {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 18px;
+}
+
+.services li {
+    display: grid;
+    gap: 3px;
+    padding-left: 16px;
+    border-left: 2px solid var(--line);
+}
+
+.services b {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.services span {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--muted);
+}

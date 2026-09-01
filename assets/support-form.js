@@ -24,7 +24,89 @@
         'application/zip'
     ];
 
+    /* --------------------------------------------------------------- *
+       Hosting waitlist.
+
+       Posts to the same endpoint as the support form, tagged so the two
+       arrive in the inbox distinguishable from each other. It is the only
+       measure of demand for hosted backends, so it has to actually work
+       rather than collect addresses into a form that goes nowhere.
+     * --------------------------------------------------------------- */
+    function setUpWaitlist() {
+        var wlForm = document.getElementById('waitlist-form');
+        if (!wlForm) {
+            return;
+        }
+
+        var email = document.getElementById('wl-email');
+        var submit = document.getElementById('wl-submit');
+        var status = document.getElementById('wl-status');
+
+        function say(text, kind) {
+            status.textContent = text;
+            status.className = 'form-status is-' + kind;
+            status.hidden = false;
+        }
+
+        wlForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            var value = email.value.trim();
+            if (!value || !email.checkValidity()) {
+                say('Enter an email address we can reach you at.', 'error');
+                email.focus();
+                return;
+            }
+
+            submit.disabled = true;
+            say('Sending...', 'busy');
+
+            fetch(ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: 'Hosting waitlist',
+                    email: value,
+                    phone: '',
+                    category: 'hosting-waitlist',
+                    message: 'Requested notification when hosted backends open.',
+                    company: '',
+                    context: { source: 'website', page: location.pathname }
+                })
+            })
+                .then(function (response) {
+                    if (response.ok) {
+                        wlForm.reset();
+                        say('Thanks. We will be in touch when it opens.', 'ok');
+                        return;
+                    }
+                    return response
+                        .json()
+                        .catch(function () {
+                            return null;
+                        })
+                        .then(function (body) {
+                            say(
+                                body && body.error && body.error.message
+                                    ? body.error.message
+                                    : 'Could not sign you up. Please try again shortly.',
+                                'error'
+                            );
+                        });
+                })
+                .catch(function () {
+                    say('Could not reach the service. Check your connection and try again.', 'error');
+                })
+                .then(function () {
+                    submit.disabled = false;
+                });
+        });
+    }
+
     var form = document.getElementById('support-form');
+
+    setUpWaitlist();
+
     if (!form) {
         return;
     }
