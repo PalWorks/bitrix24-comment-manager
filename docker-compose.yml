@@ -1,0 +1,68 @@
+# Brings up the backend and its database together.
+#
+#   cp .env.docker.example .env
+#   # fill in the two Bitrix24 values and the two generated secrets
+#   docker compose up -d
+#
+# The database is not published on the host: only the backend reaches it, over
+# the private compose network. Put a reverse proxy with TLS in front of port
+# 3000 before pointing an extension at it, since the extension refuses a plain
+# http origin that is not loopback.
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-b24_comments}
+      MYSQL_USER: ${MYSQL_USER:-b24}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+    command:
+      - --event-scheduler=ON
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-p${MYSQL_ROOT_PASSWORD}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      BACKEND_URL: ${BACKEND_URL:?set BACKEND_URL to this server's public https origin}
+      DATABASE_URL: mysql://${MYSQL_USER:-b24}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE:-b24_comments}
+      JWT_SECRET: ${JWT_SECRET:?generate with openssl rand -hex 32}
+      JWT_EXPIRY_SECONDS: ${JWT_EXPIRY_SECONDS:-3600}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:?generate with openssl rand -hex 32}
+      BITRIX24_CLIENT_ID: ${BITRIX24_CLIENT_ID:?from your Bitrix24 local application}
+      BITRIX24_CLIENT_SECRET: ${BITRIX24_CLIENT_SECRET:?from your Bitrix24 local application}
+      BITRIX24_ALLOWED_PORTALS: ${BITRIX24_ALLOWED_PORTALS:?comma separated portal hostnames}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      MAX_COMMENT_LENGTH: ${MAX_COMMENT_LENGTH:-5000}
+      DUPLICATE_WINDOW_SECONDS: ${DUPLICATE_WINDOW_SECONDS:-300}
+      # Optional. Leave unset unless this deployment also answers support mail.
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      SUPPORT_FROM_EMAIL: ${SUPPORT_FROM_EMAIL:-}
+      SUPPORT_TO_EMAIL: ${SUPPORT_TO_EMAIL:-}
+    ports:
+      - '${BIND_ADDRESS:-127.0.0.1}:3000:3000'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  db-data:
