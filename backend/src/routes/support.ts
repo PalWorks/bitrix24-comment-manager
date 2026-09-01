@@ -61,6 +61,8 @@ const ALLOWED_ATTACHMENT_TYPES = new Set([
     'application/zip',
 ]);
 
+const MIN_NAME_LENGTH = 2;
+const MAX_NAME_LENGTH = 80;
 const MIN_MESSAGE_LENGTH = 10;
 const MAX_MESSAGE_LENGTH = 5000;
 const MAX_EMAIL_LENGTH = 254;
@@ -108,6 +110,37 @@ const supportRateLimiter = createIpRateLimiter(3, 60 * 60_000, 'support');
  * by whether a reply reaches it, not by a regular expression.
  */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+\.[^\s@]+$/;
+
+/**
+ * A reachable international number, which is the only kind worth collecting:
+ * a bare local number cannot be dialled from anywhere else. Presentation
+ * characters are stripped first, leaving E.164's plus and 7 to 15 digits.
+ */
+const PHONE_DIGITS = /^\+[1-9]\d{6,14}$/;
+
+/**
+ * Normalises a typed number to E.164. Returns null when what is left is not a
+ * dialable international number.
+ */
+export function normalizePhone(input: string): string | null {
+    const stripped = input.replace(/[\s\-().]/g, '');
+    return PHONE_DIGITS.test(stripped) ? stripped : null;
+}
+
+/**
+ * Makes a value safe to sit in an email display name.
+ *
+ * Resend is given JSON rather than raw SMTP, so this is not header injection
+ * defence. It stops a name containing a quote or an angle bracket from
+ * producing an address Resend parses as something other than intended.
+ */
+function sanitizeDisplayName(name: string): string {
+    return name
+        .replace(/[\r\n]+/g, ' ')
+        .replace(/["<>,;:]/g, '')
+        .trim()
+        .slice(0, MAX_NAME_LENGTH);
+}
 
 function requireString(value: unknown, field: string): string {
     if (typeof value !== 'string') {
@@ -235,9 +268,28 @@ supportRouter.post(
                 return;
             }
 
+            const name = requireString(body.name, 'name');
+            if (name.length < MIN_NAME_LENGTH || name.length > MAX_NAME_LENGTH) {
+                throw new BadRequestError('Tell us your name so we know who we are replying to.');
+            }
+
             const email = requireString(body.email, 'email');
             if (email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(email)) {
                 throw new BadRequestError('Enter an email address we can reply to.');
+            }
+
+            // Optional, but if given it has to be dialable, or it is worse than
+            // nothing: it looks like a way to reach someone and is not one.
+            const rawPhone = typeof body.phone === 'string' ? body.phone.trim() : '';
+            let phone = '';
+            if (rawPhone) {
+                const normalized = normalizePhone(rawPhone);
+                if (!normalized) {
+                    throw new BadRequestError(
+                        'Include the country code on the phone number, for example +971 50 123 4567.',
+                    );
+                }
+                phone = normalized;
             }
 
             const category = parseCategory(body.category);
@@ -255,7 +307,9 @@ supportRouter.post(
             }
 
             await sendSupportEmail(getConfig(), {
+                name: sanitizeDisplayName(name),
                 email,
+                phone,
                 category,
                 message,
                 context: parseContext(body.context),

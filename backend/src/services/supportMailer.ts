@@ -26,8 +26,12 @@ export interface SupportAttachment {
 }
 
 export interface SupportMessage {
+    /** The reporter's name, already stripped of anything an address cannot hold. */
+    name: string;
     /** The reporter's address. Used only as reply_to. */
     email: string;
+    /** E.164 number, or an empty string when not given. */
+    phone: string;
     category: string;
     message: string;
     /** Extension version, portal host and similar diagnostics. */
@@ -56,6 +60,22 @@ function escapeHtml(value: string): string {
  * request, so all of it is escaped before it reaches the HTML part.
  */
 function renderBody(message: SupportMessage): { html: string; text: string } {
+    // Contact details lead, because the first thing anyone reading this needs
+    // is how to reach the person. The phone line is omitted rather than shown
+    // empty, so a blank never reads as a number that failed to arrive.
+    const contact: Array<[string, string]> = [
+        ['Name', message.name],
+        ['Email', message.email],
+    ];
+    if (message.phone) {
+        contact.push(['Phone', message.phone]);
+    }
+    contact.push(['Category', message.category]);
+
+    const contactHtml = contact
+        .map(([key, value]) => `<b>${escapeHtml(key)}:</b> ${escapeHtml(value)}`)
+        .join('<br>');
+
     const contextRows = Object.entries(message.context)
         .map(([key, value]) => `<tr><td><b>${escapeHtml(key)}</b></td><td>${escapeHtml(value)}</td></tr>`)
         .join('');
@@ -65,16 +85,14 @@ function renderBody(message: SupportMessage): { html: string; text: string } {
         .join('\n');
 
     const html = [
-        `<p><b>From:</b> ${escapeHtml(message.email)}<br>`,
-        `<b>Category:</b> ${escapeHtml(message.category)}</p>`,
+        `<p>${contactHtml}</p>`,
         `<pre style="white-space:pre-wrap;font:inherit">${escapeHtml(message.message)}</pre>`,
         '<hr>',
         `<table>${contextRows}</table>`,
     ].join('\n');
 
     const text = [
-        `From: ${message.email}`,
-        `Category: ${message.category}`,
+        ...contact.map(([key, value]) => `${key}: ${value}`),
         '',
         message.message,
         '',
@@ -107,8 +125,10 @@ export async function sendSupportEmail(
     const payload: Record<string, unknown> = {
         from: config.supportFromEmail,
         to: [config.supportToEmail],
-        reply_to: message.email,
-        subject: `[${message.category}] Support request from ${message.email}`,
+        // The name rides along so a reply is addressed to a person rather than
+        // to an address. It has already been stripped of quotes and brackets.
+        reply_to: message.name ? `${message.name} <${message.email}>` : message.email,
+        subject: `[${message.category}] Support request from ${message.name || message.email}`,
         html,
         text,
     };

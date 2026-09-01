@@ -83,7 +83,9 @@ const TAB_ORDER: TabName[] = ['hosted', 'deploy', 'selfhost'];
 const support = {
     section: document.getElementById('support-section') as HTMLElement,
     form: document.getElementById('support-form') as HTMLFormElement,
+    name: document.getElementById('support-name') as HTMLInputElement,
     email: document.getElementById('support-email') as HTMLInputElement,
+    phone: document.getElementById('support-phone') as HTMLInputElement,
     category: document.getElementById('support-category') as HTMLSelectElement,
     message: document.getElementById('support-message') as HTMLTextAreaElement,
     file: document.getElementById('support-file') as HTMLInputElement,
@@ -525,7 +527,9 @@ function resolveAttachmentType(file: File): string | null {
 }
 
 interface SupportPayload {
+    name: string;
     email: string;
+    phone: string;
     category: string;
     message: string;
     context: Record<string, string>;
@@ -609,11 +613,27 @@ async function readAttachment(): Promise<SupportPayload['attachment']> {
 async function handleSupportSubmit(event: Event): Promise<void> {
     event.preventDefault();
 
+    const name = support.name.value.trim();
     const email = support.email.value.trim();
+    const phone = support.phone.value.trim();
     const message = support.message.value.trim();
 
+    if (name.length < 2) {
+        showSettingStatus(support.status, 'Tell us your name so we know who we are replying to.', 'error');
+        return;
+    }
     if (!email || !support.email.checkValidity()) {
         showSettingStatus(support.status, 'Enter an email address we can reply to.', 'error');
+        return;
+    }
+    // Checked here as well as on the server so the correction happens while the
+    // field is still in front of the person, not after a round trip.
+    if (phone && !/^\+[1-9][\d\s\-().]{6,20}$/.test(phone)) {
+        showSettingStatus(
+            support.status,
+            'Include the country code on the phone number, for example +971 50 123 4567.',
+            'error',
+        );
         return;
     }
     if (message.length < 10) {
@@ -638,7 +658,9 @@ async function handleSupportSubmit(event: Event): Promise<void> {
     }
 
     const failure = await postSupport({
+        name,
         email,
+        phone,
         category: support.category.value,
         message,
         context: supportContext(),
@@ -673,7 +695,9 @@ async function handleWaitlist(): Promise<void> {
     support.waitlistBtn.disabled = true;
 
     const failure = await postSupport({
+        name: 'Hosting waitlist',
         email,
+        phone: '',
         category: 'hosting-waitlist',
         message: 'Requested notification when hosted backends open.',
         context: supportContext(),

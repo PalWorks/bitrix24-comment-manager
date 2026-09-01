@@ -250,8 +250,11 @@ describe('options page', () => {
             const form = document.getElementById('support-form') as HTMLFormElement;
             expect(form.classList.contains('hidden')).toBe(false);
 
+            (document.getElementById('support-name') as HTMLInputElement).value = 'Jane Cooper';
             (document.getElementById('support-email') as HTMLInputElement).value =
                 'someone@example.com';
+            (document.getElementById('support-phone') as HTMLInputElement).value =
+                '+971 50 123 4567';
             (document.getElementById('support-message') as HTMLTextAreaElement).value =
                 'The popup will not open on a lead page.';
             form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
@@ -262,7 +265,9 @@ describe('options page', () => {
             expect(url).toBe('https://support.example.com/support');
 
             const body = JSON.parse((init as { body: string }).body);
+            expect(body.name).toBe('Jane Cooper');
             expect(body.email).toBe('someone@example.com');
+            expect(body.phone).toBe('+971 50 123 4567');
             expect(body.category).toBe('bug');
             expect(body.company).toBe('');
             expect(body.context.extensionVersion).toBe('2.0.0');
@@ -302,6 +307,38 @@ describe('options page', () => {
             );
         });
 
+        it('catches a phone number with no country code before any round trip', async () => {
+            vi.stubEnv('VITE_SUPPORT_URL', 'https://support.example.com');
+            const fetchMock = vi.fn();
+            vi.stubGlobal('fetch', fetchMock);
+
+            setupChromeMockWithResponses({
+                [MESSAGE_TYPES.AUTH_STATUS]: { success: true, data: { isAuthenticated: false } },
+            });
+
+            await import('../../../extension/options/options');
+            await vi.runAllTimersAsync();
+
+            (document.getElementById('support-name') as HTMLInputElement).value = 'Jane Cooper';
+            (document.getElementById('support-email') as HTMLInputElement).value =
+                'someone@example.com';
+            (document.getElementById('support-phone') as HTMLInputElement).value = '0501234567';
+            (document.getElementById('support-message') as HTMLTextAreaElement).value =
+                'The popup will not open on a lead page.';
+            (document.getElementById('support-form') as HTMLFormElement).dispatchEvent(
+                new Event('submit', { bubbles: true, cancelable: true }),
+            );
+            await vi.runAllTimersAsync();
+
+            expect(fetchMock).not.toHaveBeenCalled();
+            expect((document.getElementById('support-status') as HTMLElement).textContent).toMatch(
+                /country code/i,
+            );
+
+            vi.unstubAllGlobals();
+            vi.unstubAllEnvs();
+        });
+
         it('rejects a message that is too short without calling the service', async () => {
             vi.stubEnv('VITE_SUPPORT_URL', 'https://support.example.com');
             const fetchMock = vi.fn();
@@ -314,6 +351,7 @@ describe('options page', () => {
             await import('../../../extension/options/options');
             await vi.runAllTimersAsync();
 
+            (document.getElementById('support-name') as HTMLInputElement).value = 'Jane Cooper';
             (document.getElementById('support-email') as HTMLInputElement).value =
                 'someone@example.com';
             (document.getElementById('support-message') as HTMLTextAreaElement).value = 'help';

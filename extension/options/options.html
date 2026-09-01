@@ -224,9 +224,26 @@ docker compose up -d</code></pre>
 
             <form id="support-form" novalidate>
                 <div class="setting-block">
+                    <label class="setting-label" for="support-name">Your name</label>
+                    <input id="support-name" class="setting-input setting-input-block" type="text"
+                        autocomplete="name" spellcheck="false" required maxlength="80"
+                        placeholder="Jane Cooper">
+                </div>
+
+                <div class="setting-block">
                     <label class="setting-label" for="support-email">Your email</label>
                     <input id="support-email" class="setting-input setting-input-block" type="email"
                         autocomplete="email" spellcheck="false" required placeholder="you@company.com">
+                </div>
+
+                <div class="setting-block">
+                    <label class="setting-label" for="support-phone">Phone (optional)</label>
+                    <input id="support-phone" class="setting-input setting-input-block" type="tel"
+                        autocomplete="tel" spellcheck="false" maxlength="24"
+                        placeholder="+971 50 123 4567">
+                    <p class="setting-help">
+                        Include the country code, so we can call you wherever you are.
+                    </p>
                 </div>
 
                 <div class="setting-block">

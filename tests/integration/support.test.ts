@@ -76,6 +76,7 @@ async function getConfig(): Promise<TestResponse> {
 
 function validBody(overrides: Record<string, unknown> = {}) {
     return {
+        name: 'Jane Cooper',
         email: 'reporter@example.com',
         category: 'bug',
         message: 'The popup does not open on a lead page.',
@@ -193,7 +194,10 @@ describe('Support endpoint', () => {
             const payload = lastResendPayload();
             expect(payload.from).toBe('Support <support@example.com>');
             expect(payload.to).toEqual(['inbox@example.com']);
-            expect(payload.reply_to).toBe('reporter@example.com');
+            // Reply-To names the reporter from the validated fields, never the
+            // address the body tried to smuggle in.
+            expect(payload.reply_to).toBe('Jane Cooper <reporter@example.com>');
+            expect(JSON.stringify(payload)).not.toContain('victim@elsewhere.test');
         });
 
         it('escapes the message so a report cannot inject markup into the email', async () => {
@@ -202,6 +206,80 @@ describe('Support endpoint', () => {
             const payload = lastResendPayload();
             expect(payload.html).not.toContain('<img');
             expect(payload.html).toContain('&lt;img');
+        });
+    });
+
+    describe('contact details', () => {
+        it('carries name, email and phone into the message', async () => {
+            await post(validBody({ phone: '+971 50 123 4567' }));
+
+            const payload = lastResendPayload();
+            expect(payload.text).toContain('Name: Jane Cooper');
+            expect(payload.text).toContain('Email: reporter@example.com');
+            expect(payload.text).toContain('Phone: +971501234567');
+        });
+
+        it('addresses the reply to the person, not just the address', async () => {
+            await post(validBody());
+
+            const payload = lastResendPayload();
+            expect(payload.reply_to).toBe('Jane Cooper <reporter@example.com>');
+            expect(payload.subject).toContain('Jane Cooper');
+        });
+
+        it('omits the phone line entirely when none was given', async () => {
+            await post(validBody());
+
+            const payload = lastResendPayload();
+            expect(payload.text).not.toContain('Phone:');
+        });
+
+        it('rejects a missing name', async () => {
+            const response = await post(validBody({ name: undefined }));
+
+            expect(response.status).toBe(400);
+            expect(resendCalls()).toHaveLength(0);
+        });
+
+        it('rejects a one character name', async () => {
+            const response = await post(validBody({ name: 'J' }));
+
+            expect(response.status).toBe(400);
+        });
+
+        it('strips characters that would break the reply address', async () => {
+            await post(validBody({ name: 'Jane "Boss" <admin@elsewhere.test>' }));
+
+            const payload = lastResendPayload();
+            expect(payload.reply_to).toBe('Jane Boss admin@elsewhere.test <reporter@example.com>');
+            expect(String(payload.reply_to).match(/</g)).toHaveLength(1);
+        });
+
+        it('rejects a phone number with no country code', async () => {
+            const response = await post(validBody({ phone: '0501234567' }));
+
+            expect(response.status).toBe(400);
+            expect((response.body.error as { message: string }).message).toMatch(/country code/i);
+            expect(resendCalls()).toHaveLength(0);
+        });
+
+        it('rejects a phone number that is too short to dial', async () => {
+            const response = await post(validBody({ phone: '+123' }));
+
+            expect(response.status).toBe(400);
+        });
+
+        it('accepts a number written with spaces, dashes and brackets', async () => {
+            const response = await post(validBody({ phone: '+44 (20) 7946-0958' }));
+
+            expect(response.status).toBe(202);
+            expect(lastResendPayload().text).toContain('Phone: +442079460958');
+        });
+
+        it('treats an empty phone as not given rather than invalid', async () => {
+            const response = await post(validBody({ phone: '   ' }));
+
+            expect(response.status).toBe(202);
         });
     });
 
