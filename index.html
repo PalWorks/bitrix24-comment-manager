@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bitrix24 Comment Manager</title>
+<meta name="description" content="A Chrome extension and self-hosted backend that give Bitrix24 CRM teams a governed, audited way to comment on leads. Open source, MIT licensed.">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/logo-192.png">
+<link rel="apple-touch-icon" href="assets/logo-192.png">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Bitrix24 Comment Manager">
+<meta property="og:description" content="Every comment on a lead, accounted for. A governed, audited comment workflow for Bitrix24 CRM.">
+<meta property="og:image" content="assets/logo-512.png">
+<meta name="twitter:card" content="summary">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;800&display=swap">
+
+<style>
+/* ------------------------------------------------------------------ *
+   Tokens.
+   Palette measured from bitrix24.com's own stylesheet so the page sits
+   beside the platform it plugs into: #409eef is their primary, #00629a
+   their deep blue, 6/12/999px their radii. The one departure is the
+   orange, taken from the checkmark in our own product mark and spent
+   only on the audit motif.
+ * ------------------------------------------------------------------ */
+:root {
+    --blue:        #409eef;
+    --blue-deep:   #00629a;
+    --blue-wash:   #eaf4fe;
+    --on-blue:     #ffffff;
+    --check:       #f5920b;
+    --check-wash:  #fff4e4;
+
+    --ink:         #1c2430;
+    --ink-soft:    #37455a;
+    --muted:       #5a6779;
+
+    --ground:      #ffffff;
+    --ground-alt:  #f6f9fc;
+    --surface:     #ffffff;
+    --line:        #e2e9f1;
+    --line-soft:   #edf2f8;
+
+    --shadow-sm:   0 1px 2px rgba(28, 36, 48, .06), 0 2px 8px rgba(28, 36, 48, .04);
+    --shadow-lg:   0 2px 4px rgba(28, 36, 48, .04), 0 18px 48px rgba(28, 48, 78, .12);
+
+    --r-sm: 6px;
+    --r-md: 12px;
+    --r-pill: 999px;
+
+    --maxw: 1120px;
+    --sans: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --blue:        #5cb0f5;
+        --blue-deep:   #8fcbfa;
+        --blue-wash:   #14263a;
+        --on-blue:     #08121d;
+        --check:       #ffab3d;
+        --check-wash:  #2e2113;
+
+        --ink:         #e9eff7;
+        --ink-soft:    #c2cdda;
+        --muted:       #93a2b7;
+
+        --ground:      #0e1520;
+        --ground-alt:  #121c2a;
+        --surface:     #16202f;
+        --line:        #253248;
+        --line-soft:   #1d2939;
+
+        --shadow-sm:   0 1px 2px rgba(0, 0, 0, .4);
+        --shadow-lg:   0 2px 4px rgba(0, 0, 0, .3), 0 18px 48px rgba(0, 0, 0, .45);
+    }
+}
+
+:root[data-theme="dark"] {
+    --blue:        #5cb0f5;
+    --blue-deep:   #8fcbfa;
+    --blue-wash:   #14263a;
+    --on-blue:     #08121d;
+    --check:       #ffab3d;
+    --check-wash:  #2e2113;
+
+    --ink:         #e9eff7;
+    --ink-soft:    #c2cdda;
+    --muted:       #93a2b7;
+
+    --ground:      #0e1520;
+    --ground-alt:  #121c2a;
+    --surface:     #16202f;
+    --line:        #253248;
+    --line-soft:   #1d2939;
+
+    --shadow-sm:   0 1px 2px rgba(0, 0, 0, .4);
+    --shadow-lg:   0 2px 4px rgba(0, 0, 0, .3), 0 18px 48px rgba(0, 0, 0, .45);
+}
+
+/* ------------------------------------------------------------------ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+    margin: 0;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    font-weight: 800;
+}
+
+p { margin: 0; }
+
+a { color: var(--blue-deep); }
+
+img { max-width: 100%; display: block; }
+
+:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 3px;
+    border-radius: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+    }
+}
+
+.wrap {
+    width: 100%;
+    max-width: var(--maxw);
+    margin-inline: auto;
+    padding-inline: 24px;
+}
+
+.eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+/* ---- header ------------------------------------------------------- */
+
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: saturate(1.6) blur(10px);
+    border-bottom: 1px solid var(--line-soft);
+}
+
+.site-header .wrap {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 64px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 15px;
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: -.01em;
+}
+
+.brand img { width: 30px; height: 30px; border-radius: 7px; }
+
+.header-links {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+}
+
+.header-links a {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    text-decoration: none;
+}
+
+.header-links a:hover { color: var(--blue-deep); }
+
+@media (max-width: 640px) {
+    .header-links .hide-sm { display: none; }
+}
+
+/* ---- buttons ------------------------------------------------------ */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    height: 46px;
+    padding-inline: 22px;
+    border-radius: var(--r-pill);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    transition: background-color .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+.btn:active { transform: translateY(1px); }
+
+.btn-primary {
+    background: var(--blue);
+    color: var(--on-blue);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover { background: var(--blue-deep); }
+
+.btn-ghost {
+    background: var(--surface);
+    color: var(--ink);
+    border-color: var(--line);
+}
+
+.btn-ghost:hover { border-color: var(--blue); color: var(--blue-deep); }
+
+.btn svg { flex: none; }
+
+/* ---- hero --------------------------------------------------------- */
+
+.hero {
+    padding-block: clamp(34px, 4.5vw, 60px) clamp(56px, 8vw, 96px);
+    background:
+        radial-gradient(720px 380px at 78% -8%, var(--blue-wash), transparent 68%);
+}
+
+.hero-grid {
+    display: grid;
+    gap: clamp(40px, 6vw, 72px);
+    align-items: center;
+}
+
+@media (min-width: 940px) {
+    .hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 440px); }
+}
+
+.hero-copy { display: flex; flex-direction: column; gap: 22px; align-items: flex-start; }
+
+.hero h1 { font-size: clamp(34px, 5.2vw, 52px); }
+
+.hero h1 .accent { color: var(--blue-deep); }
+
+.hero-sub {
+    font-size: clamp(16px, 1.6vw, 18.5px);
+    color: var(--muted);
+    max-width: 34em;
+}
+
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 13px 6px 10px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+}
+
+.chip .tick { color: var(--check); flex: none; }
+
+/* ---- product rendering -------------------------------------------- */
+
+.stage {
+    position: relative;
+    border-radius: var(--r-md);
+    border: 1px solid var(--line);
+    background: var(--ground-alt);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.stage-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+}
+
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); flex: none; }
+
+.stage-url {
+    margin-left: 6px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.stage-body { padding: 16px; display: grid; gap: 12px; }
+
+/* the CRM record showing behind the popup */
+.record { display: grid; gap: 9px; }
+
+.record-row { display: flex; align-items: center; gap: 10px; }
+
+.skel {
+    height: 9px;
+    border-radius: var(--r-pill);
+    background: var(--line);
+}
+
+.record-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    letter-spacing: -.01em;
+}
+
+/* the extension popup itself */
+.popup {
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.popup-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 11px 13px;
+    border-bottom: 1px solid var(--line-soft);
+}
+
+.popup-head img { width: 20px; height: 20px; border-radius: 5px; }
+
+.popup-title { font-size: 12.5px; font-weight: 700; letter-spacing: -.01em; }
+
+.badge {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: var(--r-pill);
+    background: var(--blue-wash);
+    color: var(--blue-deep);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .02em;
+}
+
+.popup-body { padding: 13px; display: grid; gap: 11px; }
+
+.field {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+}
+
+.field dt { color: var(--muted); }
+.field dd { margin: 0; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.composer {
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 10px 11px;
+    background: var(--ground-alt);
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    min-height: 62px;
+}
+
+.caret {
+    display: inline-block;
+    width: 1.5px;
+    height: 14px;
+    vertical-align: -3px;
+    margin-left: 1px;
+    background: var(--blue);
+    animation: blink 1.1s step-end infinite;
+}
+
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+.composer-foot { display: flex; align-items: center; gap: 10px; }
+
+.counter { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.mini-btn {
+    margin-left: auto;
+    padding: 7px 15px;
+    border-radius: var(--r-sm);
+    background: var(--blue);
+    color: var(--on-blue);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* the audit trail: the thing that makes this different from a text box */
+.trail {
+    border-top: 1px dashed var(--line);
+    padding: 11px 13px 13px;
+    display: grid;
+    gap: 7px;
+    background: var(--ground-alt);
+}
+
+.trail-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.trail-row {
+    display: grid;
+    grid-template-columns: 15px 1fr auto;
+    align-items: center;
+    gap: 9px;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+}
+
+.trail-row time {
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.trail-row .tick { color: var(--check); }
+
+.trail-row .verb { font-weight: 700; }
+
+/* ---- sections ----------------------------------------------------- */
+
+.section { padding-block: clamp(56px, 8vw, 84px); }
+
+.section-alt { background: var(--ground-alt); border-block: 1px solid var(--line-soft); }
+
+.section-head { display: grid; gap: 12px; margin-bottom: 40px; }
+
+.section-head h2 { max-width: 20ch; }
+
+.section-head h2 { font-size: clamp(25px, 3.2vw, 33px); }
+
+.section-head p { color: var(--muted); max-width: 52ch; }
+
+.cards {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
+}
+
+.card {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    padding: 24px;
+    border-radius: var(--r-md);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.card-icon {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--blue-wash);
+    color: var(--blue-deep);
+    margin-bottom: 4px;
+}
+
+.card-icon.warm { background: var(--check-wash); color: var(--check); }
+
+.card h3 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+
+.card p { font-size: 14.5px; color: var(--muted); }
+
+/* ---- steps: numbered because the order is real -------------------- */
+
+.steps {
+    display: grid;
+    gap: 28px;
+    grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+    counter-reset: step;
+}
+
+.step { display: grid; gap: 9px; align-content: start; position: relative; padding-top: 20px; }
+
+.step::before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--blue-deep);
+    background: var(--blue-wash);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.step h3 { font-size: 16.5px; font-weight: 700; margin-top: 10px; }
+
+.step p { font-size: 14.5px; color: var(--muted); }
+
+.step code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: var(--blue-wash);
+    color: var(--blue-deep);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+/* ---- closing band ------------------------------------------------- */
+
+.closer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 24px;
+    padding: 34px;
+    border-radius: var(--r-md);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.closer > div:first-child { flex: 1 1 320px; display: grid; gap: 8px; }
+
+.closer .hero-actions { flex: 0 0 auto; flex-wrap: nowrap; }
+
+.closer h2 { font-size: clamp(21px, 2.6vw, 26px); }
+
+.closer p { color: var(--muted); font-size: 15px; }
+
+/* ---- footer ------------------------------------------------------- */
+
+.site-footer {
+    border-top: 1px solid var(--line-soft);
+    padding-block: 34px 44px;
+    background: var(--ground);
+}
+
+.footer-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px 32px;
+    align-items: center;
+}
+
+.footer-links { display: flex; flex-wrap: wrap; gap: 20px; margin-left: auto; }
+
+.footer-links a { font-size: 14px; color: var(--ink-soft); text-decoration: none; font-weight: 500; }
+
+.footer-links a:hover { color: var(--blue-deep); text-decoration: underline; }
+
+.fine { font-size: 12.5px; color: var(--muted); margin-top: 20px; max-width: 62ch; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+    <div class="wrap">
+        <a class="brand" href="#top">
+            <img src="assets/logo-192.png" alt="">
+            Bitrix24 Comment Manager
+        </a>
+        <nav class="header-links">
+            <a class="hide-sm" href="#what">What it does</a>
+            <a class="hide-sm" href="#how">How it works</a>
+            <a href="https://github.com/PalWorks/bitrix24-comment-manager">GitHub</a>
+        </nav>
+    </div>
+</header>
+
+<main id="top">
+
+    <!-- ============ hero ============ -->
+    <section class="hero">
+        <div class="wrap hero-grid">
+
+            <div class="hero-copy">
+                <p class="eyebrow">Chrome extension &middot; Open source</p>
+
+                <h1>Every comment on a lead, <span class="accent">accounted for</span>.</h1>
+
+                <p class="hero-sub">
+                    Your agents get a fast way to comment on Bitrix24 CRM leads without
+                    leaving the page. You get a record of it. Every comment is routed
+                    through a backend you run, checked against your rules, and written to
+                    an audit log that cannot be edited afterwards.
+                </p>
+
+                <div class="hero-actions">
+                    <a class="btn btn-primary"
+                       href="https://chromewebstore.google.com/detail/bitrix24-comment-manager/aglpldoffhkjoijafabmmfnamnpnhdhb">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 2a10 10 0 0 1 8.66 5H12a5 5 0 0 0-4.9 4.02L3.5 5.6A9.98 9.98 0 0 1 12 2Zm10 10a10 10 0 0 1-9.32 9.98l3.6-6.24A5 5 0 0 0 17 12h5ZM2 12c0-1.6.38-3.12 1.05-4.47l3.6 6.24a5 5 0 0 0 4.2 3.19l-2.9 5.02A10 10 0 0 1 2 12Zm10 3.3A3.3 3.3 0 1 1 12 8.7a3.3 3.3 0 0 1 0 6.6Z"/>
+                        </svg>
+                        Add to Chrome
+                    </a>
+                    <a class="btn btn-ghost" href="https://github.com/PalWorks/bitrix24-comment-manager">
+                        <svg width="17" height="17" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
+                        </svg>
+                        Read the source
+                    </a>
+                </div>
+
+                <ul class="chips" style="list-style:none;margin:0;padding:0">
+                    <li class="chip">
+                        <svg class="tick" width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6.2 12.5 2 8.3l1.4-1.4 2.8 2.8 6.4-6.4L14 4.7z"/></svg>
+                        MIT licensed
+                    </li>
+                    <li class="chip">
+                        <svg class="tick" width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6.2 12.5 2 8.3l1.4-1.4 2.8 2.8 6.4-6.4L14 4.7z"/></svg>
+                        You host the backend
+                    </li>
+                    <li class="chip">
+                        <svg class="tick" width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6.2 12.5 2 8.3l1.4-1.4 2.8 2.8 6.4-6.4L14 4.7z"/></svg>
+                        Any Bitrix24 portal
+                    </li>
+                </ul>
+            </div>
+
+            <!-- A rendering of the actual popup, sitting over a lead record. -->
+            <div class="stage" role="img"
+                 aria-label="The extension popup open on a Bitrix24 lead page, showing the detected lead, a comment being typed, and the audit trail beneath it.">
+                <div class="stage-bar">
+                    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                    <span class="stage-url">acme.bitrix24.com/crm/lead/details/4821/</span>
+                </div>
+
+                <div class="stage-body">
+                    <div class="record">
+                        <p class="record-title">Lead 4821 &middot; Northwind Logistics</p>
+                        <div class="record-row"><span class="skel" style="width:38%"></span></div>
+                        <div class="record-row"><span class="skel" style="width:64%"></span></div>
+                    </div>
+
+                    <div class="popup">
+                        <div class="popup-head">
+                            <img src="assets/logo-192.png" alt="">
+                            <span class="popup-title">Comment Manager</span>
+                            <span class="badge">CONNECTED</span>
+                        </div>
+
+                        <div class="popup-body">
+                            <dl class="field" style="margin:0">
+                                <dt>Lead</dt><dd>4821</dd>
+                            </dl>
+                            <dl class="field" style="margin:0">
+                                <dt>Portal</dt><dd>acme.bitrix24.com</dd>
+                            </dl>
+
+                            <div class="composer">
+                                Spoke with procurement. Renewal moved to Q3, budget
+                                confirmed<span class="caret"></span>
+                            </div>
+
+                            <div class="composer-foot">
+                                <span class="counter">4,921 left</span>
+                                <span class="mini-btn">Submit</span>
+                            </div>
+                        </div>
+
+                        <div class="trail">
+                            <p class="trail-label">Audit trail</p>
+                            <div class="trail-row">
+                                <svg class="tick" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6.2 12.5 2 8.3l1.4-1.4 2.8 2.8 6.4-6.4L14 4.7z"/></svg>
+                                <span><span class="verb">Created</span> by a.mehta</span>
+                                <time>09:14</time>
+                            </div>
+                            <div class="trail-row">
+                                <svg class="tick" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6.2 12.5 2 8.3l1.4-1.4 2.8 2.8 6.4-6.4L14 4.7z"/></svg>
+                                <span><span class="verb">Edited</span> by a.mehta</span>
+                                <time>09:22</time>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ============ what it does ============ -->
+    <section class="section section-alt" id="what">
+        <div class="wrap">
+            <div class="section-head">
+                <p class="eyebrow">What it does</p>
+                <h2>A comment box is easy. The record behind it is the point.</h2>
+                <p>
+                    Four things the extension handles so your team does not have to think
+                    about them.
+                </p>
+            </div>
+
+            <div class="cards">
+                <article class="card">
+                    <div class="card-icon">
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                    </div>
+                    <h3>Finds the lead on its own</h3>
+                    <p>
+                        Open a lead and the popup already knows which one you are on,
+                        including when Bitrix24 switches records without reloading the page.
+                    </p>
+                </article>
+
+                <article class="card">
+                    <div class="card-icon">
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6.5v5c0 4.6 3.2 8.4 8 9.5 4.8-1.1 8-4.9 8-9.5v-5Z"/></svg>
+                    </div>
+                    <h3>Rules an agent cannot route around</h3>
+                    <p>
+                        Length limits, per agent rate limits, and duplicate detection are
+                        enforced on the server, not in the browser where they could be
+                        skipped.
+                    </p>
+                </article>
+
+                <article class="card">
+                    <div class="card-icon warm">
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14v16l-7-3-7 3Z"/><path d="m9 10 2 2 4-4"/></svg>
+                    </div>
+                    <h3>An audit log nobody can edit</h3>
+                    <p>
+                        Every create, edit, delete, and rejected attempt is recorded with the
+                        agent, portal, and lead. A database trigger blocks changes to it,
+                        and comment text is stored only as a hash.
+                    </p>
+                </article>
+
+                <article class="card">
+                    <div class="card-icon">
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z"/></svg>
+                    </div>
+                    <h3>Your portal, your server</h3>
+                    <p>
+                        Works on any Bitrix24 domain, including your own and self hosted
+                        installations. The extension talks only to the backend you point it
+                        at. Nothing passes through us.
+                    </p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ how it works ============ -->
+    <section class="section" id="how">
+        <div class="wrap">
+            <div class="section-head">
+                <p class="eyebrow">How it works</p>
+                <h2>Three steps, once.</h2>
+                <p>After setup your agents carry on exactly as they did before.</p>
+            </div>
+
+            <div class="steps">
+                <article class="step">
+                    <h3>Run the backend</h3>
+                    <p>
+                        Node and MySQL. Register an application on your Bitrix24 portal, fill
+                        in five environment variables, and start it. The setup guide walks
+                        through the Bitrix24 side in full.
+                    </p>
+                </article>
+
+                <article class="step">
+                    <h3>Point the extension at it</h3>
+                    <p>
+                        Install from the Chrome Web Store and enter your backend URL once.
+                        Nothing is compiled in, so the same build works for every team.
+                    </p>
+                </article>
+
+                <article class="step">
+                    <h3>Comment from the lead page</h3>
+                    <p>
+                        Agents write comments in the popup. Each one lands on the Bitrix24
+                        timeline and in your audit log, or is rejected with a reason that is
+                        recorded too.
+                    </p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ closer ============ -->
+    <section class="section section-alt">
+        <div class="wrap">
+            <div class="closer">
+                <div>
+                    <h2>Free, and yours to run.</h2>
+                    <p>
+                        MIT licensed and open source. Read every line before you deploy it,
+                        change what you need, and keep your CRM data on your own
+                        infrastructure.
+                    </p>
+                </div>
+                <div class="hero-actions">
+                    <a class="btn btn-primary"
+                       href="https://chromewebstore.google.com/detail/bitrix24-comment-manager/aglpldoffhkjoijafabmmfnamnpnhdhb">Add to Chrome</a>
+                    <a class="btn btn-ghost"
+                       href="https://github.com/PalWorks/bitrix24-comment-manager/blob/main/docs/SETUP.md">Setup guide</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<footer class="site-footer">
+    <div class="wrap">
+        <div class="footer-grid">
+            <a class="brand" href="#top">
+                <img src="assets/logo-192.png" alt="">
+                Bitrix24 Comment Manager
+            </a>
+            <nav class="footer-links">
+                <a href="https://github.com/PalWorks/bitrix24-comment-manager">Source</a>
+                <a href="https://github.com/PalWorks/bitrix24-comment-manager/blob/main/docs/SETUP.md">Setup</a>
+                <a href="https://github.com/PalWorks/bitrix24-comment-manager/blob/main/SECURITY.md">Security</a>
+                <a href="https://github.com/PalWorks/bitrix24-comment-manager/issues">Report an issue</a>
+            </nav>
+        </div>
+        <p class="fine">
+            An independent open source project. Not affiliated with, endorsed by, or
+            sponsored by Bitrix24. Bitrix24 is a trademark of its respective owner.
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>
