@@ -217,7 +217,17 @@ describe('options page', () => {
 
             expect(form.classList.contains('hidden')).toBe(true);
             expect(fallback.classList.contains('hidden')).toBe(false);
-            expect((document.getElementById('btn-waitlist') as HTMLButtonElement).disabled).toBe(true);
+
+            // The waitlist control is replaced with guidance rather than left
+            // on the page as a button that cannot do anything.
+            const waitlistBtn = document.getElementById('btn-waitlist') as HTMLButtonElement;
+            const waitlistFallback = document.getElementById('waitlist-fallback') as HTMLElement;
+            expect(waitlistBtn.disabled).toBe(true);
+            expect(waitlistBtn.classList.contains('hidden')).toBe(true);
+            expect(waitlistFallback.classList.contains('hidden')).toBe(false);
+            expect(
+                (document.getElementById('link-issues-waitlist') as HTMLAnchorElement).href,
+            ).toMatch(/github\.com/);
             vi.unstubAllEnvs();
         });
 

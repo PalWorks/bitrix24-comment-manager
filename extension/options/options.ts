@@ -95,6 +95,7 @@ const support = {
     waitlistEmail: document.getElementById('waitlist-email') as HTMLInputElement,
     waitlistBtn: document.getElementById('btn-waitlist') as HTMLButtonElement,
     waitlistStatus: document.getElementById('waitlist-status') as HTMLElement,
+    waitlistFallback: document.getElementById('waitlist-fallback') as HTMLElement,
 };
 
 /**
@@ -704,6 +705,7 @@ function initializeStaticLinks(): void {
         ['link-deploy-docs', DEPLOY_DOCS_URL],
         ['link-issues', ISSUES_URL],
         ['link-issues-fallback', ISSUES_URL],
+        ['link-issues-waitlist', ISSUES_URL],
     ];
 
     for (const [id, href] of links) {
@@ -713,11 +715,17 @@ function initializeStaticLinks(): void {
         }
     }
 
+    // A build with no support service has nowhere to put a message or an
+    // address, so both controls are replaced with something that still tells
+    // the user what to do rather than a dead button with no explanation.
     if (!SUPPORT_URL) {
         support.form.classList.add('hidden');
         support.fallback.classList.remove('hidden');
         support.waitlistBtn.disabled = true;
         support.waitlistEmail.disabled = true;
+        support.waitlistBtn.classList.add('hidden');
+        support.waitlistEmail.classList.add('hidden');
+        support.waitlistFallback.classList.remove('hidden');
     }
 }
 
