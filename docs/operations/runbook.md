@@ -1,5 +1,14 @@
 # Operations Runbook
 
+> **What this is.** A worked example of running the backend on Google Cloud Run
+> with Cloud SQL, kept because the incident response, migration and audit
+> queries in it apply anywhere. The `gcloud` commands do not.
+>
+> **The supported default is Docker Compose**, which brings up the backend and
+> its database together on any host:
+> [docs/deployment/docker.md](../deployment/docker.md). If that is what you are
+> running, read sections 4 to 7 here and ignore the deployment commands.
+
 ## 1. Architecture Overview
 
 ### Component Diagram
@@ -28,7 +37,7 @@ Agent Browser
 | Component | Dependency | Protocol |
 |-----------|-----------|----------|
 | Chrome Extension | Backend API | HTTPS with JWT |
-| Backend API | PostgreSQL (Cloud SQL) | TCP with SSL |
+| Backend API | MySQL 8 (Cloud SQL for MySQL) | TCP with SSL |
 | Backend API | Bitrix24 REST API | HTTPS with OAuth2 |
 | Backend API | Secret Manager | GCP IAM |
 
@@ -37,9 +46,9 @@ Agent Browser
 | Endpoint | Purpose |
 |----------|---------|
 | `GET /health` | Shallow liveness (returns 200 if process is running) |
-| `GET /readiness` | Deep readiness (verifies config is loaded) |
+| `GET /readiness` | Deep readiness: configuration plus a `SELECT 1` against the database. Reports `mode: support-only` and skips the database check on a support mailbox instance |
 | `GET /auth/login` | Initiates OAuth2 flow |
-| `POST /auth/callback` | Handles OAuth2 callback, issues JWT |
+| `GET /auth/callback` | Handles the OAuth2 redirect from Bitrix24, issues the JWT |
 | `POST /api/comments` | Create comment (proxied to Bitrix24) |
 | `GET /api/activity` | Fetch recent audit log entries |
 
@@ -147,10 +156,20 @@ If `crm.timeline.comment.*` methods return errors:
 ### Running Migrations
 
 ```bash
-# Apply all pending migrations in order
+# Apply all pending migrations in order. They are MySQL, and are written to be
+# safe to re-apply: 004 and 005 in particular must be re-run on any deployment
+# that predates 2.0.0.
 for f in backend/migrations/*.sql; do
   echo "Applying $f..."
-  psql "$DATABASE_URL" -f "$f"
+  mysql --host="$DB_HOST" --user="$DB_USER" --password="$DB_PASSWORD" "$DB_NAME" < "$f"
+done
+```
+
+Running under Docker Compose, the database is inside the compose network:
+
+```bash
+for f in backend/migrations/*.sql; do
+  docker compose exec -T db mysql -u root -p"$MYSQL_ROOT_PASSWORD" b24_comments < "$f"
 done
 ```
 

@@ -16,6 +16,14 @@ domain, or a self hosted installation.
 **Status:** production use at one organization since 2026. Open sourced so other
 Bitrix24 teams can run it too.
 
+[**Install from the Chrome Web Store**](https://chromewebstore.google.com/detail/bitrix24-comment-manager/aglpldoffhkjoijafabmmfnamnpnhdhb)
+&middot;
+[Website](https://palworks.github.io/bitrix24-comment-manager/)
+&middot;
+[Setup guide](docs/SETUP.md)
+&middot;
+[Changelog](CHANGELOG.md)
+
 ## Contents
 
 - [How it works](#how-it-works)
@@ -254,7 +262,7 @@ Deeper references: [ARCHITECTURE.md](ARCHITECTURE.md),
 npm install          # workspaces: covers both packages
 npm run lint
 npm run typecheck
-npm test             # 343 tests
+npm test             # 366 tests
 npm run test:coverage
 ```
 

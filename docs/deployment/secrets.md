@@ -1,18 +1,34 @@
 # Secrets Management
 
+> **What this is.** The list of secrets applies to every deployment. The
+> `gcloud` commands are one worked example, for Google Cloud Secret Manager and
+> Cloud Run. Running under Docker Compose, the same values go in a `.env` file
+> with mode `600` beside the compose file; see
+> [docker.md](docker.md).
+
 ## Overview
 
-All sensitive configuration values are stored in Google Cloud Secret Manager and injected into Cloud Run as environment variables at container startup. No secrets are committed to source control.
+Nothing sensitive is committed to source control. Whatever store you use, these
+are the values it has to hold.
 
 ## Required Secrets
 
-| Secret Name | Description | How to Generate |
-|-------------|-------------|-----------------|
-| `jwt-secret` | JWT signing key | `openssl rand -base64 64` |
-| `b24-client-id` | Bitrix24 OAuth2 application client ID | From Bitrix24 admin portal |
-| `b24-client-secret` | Bitrix24 OAuth2 application client secret | From Bitrix24 admin portal |
-| `database-url` | PostgreSQL connection string | From Cloud SQL instance |
-| `b24-portal-domain` | Bitrix24 portal domain | From Bitrix24 admin portal |
+| Value | Description | How to Generate |
+|---|---|---|
+| `JWT_SECRET` | Signs the session tokens the extension holds | `openssl rand -hex 32` |
+| `TOKEN_ENCRYPTION_KEY` | Encrypts Bitrix24 refresh tokens at rest. Exactly 64 hex characters, and the backend refuses to start in production without it | `openssl rand -hex 32` |
+| `BITRIX24_CLIENT_ID` | Bitrix24 OAuth2 application client ID | From the Bitrix24 admin portal |
+| `BITRIX24_CLIENT_SECRET` | Bitrix24 OAuth2 application client secret | From the Bitrix24 admin portal |
+| `DATABASE_URL` | MySQL connection string, `mysql://user:pass@host:3306/db` | From your database |
+| `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD` | Only when the database runs in the same compose project | Any strong values |
+| `RESEND_API_KEY` | Optional. Only on an instance that receives support mail | From resend.com |
+
+**`TOKEN_ENCRYPTION_KEY` is the one that cannot be regenerated.** Lose it and
+every stored Bitrix24 token becomes undecryptable, and every agent has to
+reconnect. Keep a copy somewhere other than the server.
+
+`BITRIX24_PORTAL_DOMAIN` and `BITRIX24_ALLOWED_PORTALS` are configuration rather
+than secrets; they name portals, and knowing a portal hostname grants nothing.
 
 ## Creating Secrets in Google Cloud
 
@@ -30,8 +46,11 @@ echo -n "your-client-id" | \
 echo -n "your-client-secret" | \
   gcloud secrets create b24-client-secret --data-file=-
 
-echo -n "postgresql://user:pass@host/db" | \
+echo -n "mysql://user:pass@host:3306/b24_comments" | \
   gcloud secrets create database-url --data-file=-
+
+echo -n "$(openssl rand -hex 32)" | \
+  gcloud secrets create token-encryption-key --data-file=-
 
 echo -n "your-org.bitrix24.com" | \
   gcloud secrets create b24-portal-domain --data-file=-

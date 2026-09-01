@@ -37,6 +37,7 @@ Then set, at minimum:
 | `BITRIX24_ALLOWED_PORTALS` | Which portals this backend will authenticate, comma separated |
 | `BACKEND_URL` | The public https origin, matching the redirect URI you registered |
 | `CORS_ORIGINS` | `chrome-extension://<your extension id>` |
+| `TRUST_PROXY` | How many reverse proxies sit in front. `1` behind a single nginx or Caddy, `2` with Cloudflare in front of that, `0` if nothing. Wrong value and the per IP rate limiters either lock out everyone at once or stop limiting at all |
 
 Keep `TOKEN_ENCRYPTION_KEY` somewhere safe. Lose it and every stored Bitrix24
 token becomes undecryptable, and all agents must reconnect.

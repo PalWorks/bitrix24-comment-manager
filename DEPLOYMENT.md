@@ -125,6 +125,30 @@ to leave `CORS_ORIGINS` unset (it defaults to `*` and the backend warns).
 | `CORS_ORIGINS` | No | `*` | Comma separated allowed origins |
 | `MAX_COMMENT_LENGTH` | No | `5000` | Maximum comment length |
 | `DUPLICATE_WINDOW_SECONDS` | No | `300` | Duplicate detection window |
+| `TRUST_PROXY` | Behind a proxy | `0` | How many reverse proxies sit in front. See below |
+
+### `TRUST_PROXY`, and why the number matters
+
+Almost every deployment puts the backend behind something: nginx, Caddy, a load
+balancer, Cloudflare. Express then sees the proxy's address on every request
+rather than the client's, and the per IP rate limiters key on that one address.
+Left at `0`, every visitor shares a single bucket, so the limiter stops
+protecting anyone individually and starts locking out everyone collectively.
+
+It is a hop count, not a boolean, because a client can prepend entries to
+`X-Forwarded-For` but cannot affect the ones your own proxies append on the
+right. Trusting exactly the number of proxies that really exist is what makes
+the header safe to read.
+
+| Your setup | Value |
+|---|---|
+| Backend exposed directly, no proxy | `0` |
+| One reverse proxy (nginx, Caddy, Traefik) | `1` |
+| Cloudflare in front of one reverse proxy | `2` |
+
+Set it too low and everyone shares a bucket. Set it too high and a client can
+forge its own address and evade the limit entirely. If you change what sits in
+front of the backend, change this in the same deploy.
 
 \* Set at least one of `BITRIX24_ALLOWED_PORTALS` or `BITRIX24_PORTAL_DOMAIN`.
 
@@ -133,6 +157,7 @@ to leave `CORS_ORIGINS` unset (it defaults to `*` and the backend warns).
 | Variable | Description |
 |---|---|
 | `VITE_BACKEND_URL` | Seeds the default backend URL on first run |
+| `VITE_SUPPORT_URL` | Origin the Get help form and the hosting waitlist post to. Build time only, and deliberately not a user setting: a support message is addressed to whoever published the build. Empty hides both forms and offers the issue tracker instead |
 
 ## 6. Bitrix24 application settings
 

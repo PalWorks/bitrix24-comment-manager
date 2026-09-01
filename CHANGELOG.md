@@ -92,6 +92,26 @@ extension is configured or deployed, and no migration is needed.
   impose.
 - The rate limiters are documented as fixed window, which is what they are.
 
+### Documentation
+
+- **`TRUST_PROXY` was documented nowhere**, despite being the difference between
+  a working rate limiter and one that either locks out every visitor at once or
+  limits nobody. It is now in the deployment guide with a table of values, and
+  in the Docker guide's variable list.
+- **The runbook, the secrets guide and the monitoring guide said PostgreSQL.**
+  The schema has been MySQL since before the open source release: the migrations
+  use `DATETIME(6)`, `ON DUPLICATE KEY UPDATE` and MySQL triggers, and the
+  driver is `mysql2`. The runbook's migration loop also invoked `psql`, which
+  could never have worked against it.
+- All three are now framed as one worked example on Google Cloud, with Docker
+  Compose named as the supported default, rather than reading as the only way to
+  deploy.
+- The secrets list was missing `TOKEN_ENCRYPTION_KEY`, without which the backend
+  refuses to start in production, and `RESEND_API_KEY`.
+- `GET /auth/callback` was documented as a POST.
+- The README links the Chrome Web Store listing, the website and the changelog,
+  none of which it referenced.
+
 ## [2.0.0] Open Source Release
 
 The project is now portable: any Bitrix24 team can run it, against any portal,

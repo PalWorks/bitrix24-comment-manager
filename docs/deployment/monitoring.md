@@ -1,8 +1,20 @@
 # Monitoring and Alerting
 
+> **What this is.** A worked example using Google Cloud Monitoring. The metrics
+> and alert thresholds are worth copying anywhere; the `gcloud` and Cloud Run
+> specifics are not. On any other host the same signals come from
+> `GET /health` and `GET /readiness` plus the backend's structured JSON logs on
+> stdout, which any log shipper can read.
+
 ## Overview
 
-Production monitoring uses Google Cloud Monitoring (formerly Stackdriver) for metrics, dashboards, and alerting. Structured JSON logs are shipped to Cloud Logging for search and analysis.
+The backend logs structured JSON to stdout and exposes two endpoints: `/health`
+answers as long as the process is up, and `/readiness` also checks the database
+and reports whether the instance is running as a full backend or as a support
+only mailbox. Point whatever you already run at `/readiness`.
+
+This document describes one setup, on Google Cloud Monitoring, with Cloud
+Logging for search.
 
 ## Dashboards
 
@@ -39,7 +51,7 @@ Metrics:
 - **Query latency**: average and P95 query execution time
 - **Disk usage**: total and audit log table size
 
-Source: Cloud SQL built-in metrics (`cloudsql.googleapis.com/database/postgresql/*`)
+Source: Cloud SQL built-in metrics (`cloudsql.googleapis.com/database/mysql/*`)
 
 ## Alert Policies
 
