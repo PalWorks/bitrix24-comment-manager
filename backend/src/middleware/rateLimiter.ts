@@ -129,13 +129,19 @@ export function resetRateLimiterState(): void {
  * Designed for unauthenticated endpoints (e.g. auth routes) where
  * no JWT user object is available. Keys rate limiting on the
  * client IP address from req.ip.
+ *
+ * `keyPrefix` namespaces the window. Two limiters with different budgets must
+ * not share a counter: without a prefix, a permissive endpoint's traffic
+ * increments the same entry a strict endpoint reads, and exhausts it. Give
+ * every limiter its own prefix.
  */
 export function createIpRateLimiter(
     maxRequests: number = DEFAULT_MAX_REQUESTS,
     windowMs: number = DEFAULT_WINDOW_MS,
+    keyPrefix = '',
 ) {
     return function ipRateLimiter(req: Request, _res: Response, next: NextFunction): void {
-        const clientIp = req.ip || 'unknown';
+        const clientIp = `${keyPrefix}:${req.ip || 'unknown'}`;
         const now = Date.now();
 
         let entry = ipWindows.get(clientIp);

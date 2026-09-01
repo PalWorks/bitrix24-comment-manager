@@ -15,8 +15,8 @@ import {
 } from '../services/tokenService.js';
 
 const router = Router();
-const authRateLimiter = createIpRateLimiter(5, 60_000);
-const pollRateLimiter = createIpRateLimiter(60, 60_000);
+const authRateLimiter = createIpRateLimiter(5, 60_000, 'auth');
+const pollRateLimiter = createIpRateLimiter(60, 60_000, 'poll');
 
 interface CompletedSession {
     jwt: string;
