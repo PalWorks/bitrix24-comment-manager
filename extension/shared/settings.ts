@@ -19,6 +19,27 @@ const STORAGE_KEY = 'settings';
 export const BUILD_TIME_BACKEND_URL: string =
     (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) || '';
 
+/**
+ * Origin of the support service this build reports to, supplied at build time
+ * as VITE_SUPPORT_URL.
+ *
+ * Unlike the backend URL this is not a user setting. A support message is
+ * addressed to whoever publishes the build, so it must not be redirectable
+ * from the options page: a user who could point it anywhere would have a form
+ * that mails arbitrary recipients on demand. A build without this value simply
+ * offers the issue tracker instead.
+ */
+export const SUPPORT_URL: string = normalizeBackendUrl(
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPPORT_URL) || '',
+);
+
+/** Where users are sent when a build carries no support service. */
+export const ISSUES_URL = 'https://github.com/PalWorks/bitrix24-comment-manager/issues';
+
+/** The setup walkthrough, linked from the options page and the popup. */
+export const SETUP_DOCS_URL =
+    'https://github.com/PalWorks/bitrix24-comment-manager/blob/main/docs/SETUP.md';
+
 export interface Settings {
     /** Origin of the backend API, with no trailing slash. Empty when unconfigured. */
     backendUrl: string;

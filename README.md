@@ -79,6 +79,10 @@ agent cannot bypass, and could not produce an audit log the agent cannot edit.
   allowlist.
 - **Runtime configuration**: point the extension at your backend from the options
   page. No rebuild needed.
+- **Three routes to a backend** offered in the options page: managed hosting,
+  a one command Docker deployment, or your own server.
+- **Built in support form** with attachments, delivered through Resend. Optional,
+  and off unless a deployment configures a mailbox.
 - **Offline feedback** when the backend is unreachable.
 
 ## Requirements
@@ -109,6 +113,16 @@ cd backend && npm run dev
 curl http://localhost:3000/health   # {"status":"ok"}
 ```
 
+Or bring up the backend and its database together with Docker, which is the
+shortest path to a working deployment:
+
+```bash
+cp .env.docker.example .env    # fill in the Bitrix24 values and two secrets
+docker compose up -d
+```
+
+Full walkthrough in [docs/deployment/docker.md](docs/deployment/docker.md).
+
 Then build and load the extension:
 
 ```bash
@@ -128,6 +142,11 @@ everyone.
 
 **Backend URL.** Set it on first run, or later from the options page. Stored per
 installation in `chrome.storage.local`.
+
+**Choosing a backend.** The options page offers three routes: managed hosting,
+a one command Docker deployment, or pointing at a server you or your
+administrator already run. Whichever you take, the result is one origin pasted
+into the Backend URL field.
 
 **Portals.** Portals on `bitrix24.com` work immediately. For any other portal, a
 regional domain like `acme.bitrix24.de`, your own domain, or a self hosted
@@ -163,6 +182,16 @@ Every endpoint except `/health`, `/readiness`, and `/auth/*` requires a
 | `DELETE` | `/api/comments/:id` | JWT | Delete a comment |
 | `GET` | `/api/leads/:leadId` | JWT | Fetch lead details |
 | `GET` | `/api/activity` | JWT | The agent's recent audit entries |
+| `GET` | `/support/config` | No | Whether this deployment accepts support mail, and its limits |
+| `POST` | `/support` | No | Support message, optionally with one attachment |
+
+`/support` is the only unauthenticated route that sends email, so it is
+deliberately narrow: the sender and recipient come from configuration and can
+never be set by a request, submissions are rate limited per IP on their own
+namespace, the body and attachment are size capped before anything is decoded,
+and attachment types are an allowlist. A deployment that sets none of
+`RESEND_API_KEY`, `SUPPORT_FROM_EMAIL` and `SUPPORT_TO_EMAIL` answers 503 and
+sends nothing, which is the normal state for a self hosted instance.
 
 ### Authorization chain
 
@@ -188,8 +217,9 @@ backend/
     config.ts          Environment loading, portal allowlist
     server.ts          Express app, middleware, graceful shutdown
     middleware/        jwtAuth, agentAuth, leadAuth, rateLimiter, commentValidator
-    routes/            auth, comments, leads, activity
-    services/          tokenService, tokenStore, bitrix24Client, auditLogger
+    routes/            auth, comments, leads, activity, support
+    services/          tokenService, tokenStore, bitrix24Client, auditLogger,
+                       supportMailer
     utils/             errors, logger, hash, crypto
 extension/
   manifest.json        Manifest V3
@@ -198,6 +228,7 @@ extension/
   popup/               main UI
   options/             configuration and activity log
   shared/              settings, constants, message types, types
+docker-compose.yml     Backend and MySQL, for a one command deployment
 deploy/php-proxy/      Optional front door for shared hosting
 docs/                  Setup, deployment, operations
 tests/                 unit, integration, load
@@ -214,7 +245,7 @@ Deeper references: [ARCHITECTURE.md](ARCHITECTURE.md),
 npm install          # workspaces: covers both packages
 npm run lint
 npm run typecheck
-npm test             # 274 tests
+npm test             # 306 tests
 npm run test:coverage
 ```
 
@@ -240,6 +271,9 @@ so they are lost on restart.
 - Requests are redirected to HTTPS in production, with HSTS.
 - The extension requests `https://*.bitrix24.com/*` up front, and anything else
   only when the user adds a portal.
+- The support form posts to a fixed origin compiled into the build, never to a
+  user settable one. A form whose recipient the user could change would be a
+  mail relay.
 
 To report a vulnerability, see [SECURITY.md](SECURITY.md).
 

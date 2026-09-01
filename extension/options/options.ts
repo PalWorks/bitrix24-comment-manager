@@ -1,4 +1,5 @@
 import { MESSAGE_TYPES } from '../shared/constants';
+import { SUPPORT_URL, ISSUES_URL, SETUP_DOCS_URL } from '../shared/settings';
 import { createMessage } from '../shared/messages';
 import type {
     AuthState,
@@ -45,6 +46,55 @@ const elements = {
     portalStatus: document.getElementById('portal-status') as HTMLElement,
     portalList: document.getElementById('portal-list') as HTMLUListElement,
     portalEmpty: document.getElementById('portal-empty') as HTMLElement,
+    connectionBadge: document.getElementById('connection-badge') as HTMLElement,
+};
+
+const DEPLOY_DOCS_URL =
+    'https://github.com/PalWorks/bitrix24-comment-manager/blob/main/docs/deployment/docker.md';
+
+/** Client side mirror of the server's attachment policy, for a fast rejection. */
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_TYPES = [
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'application/pdf',
+    'text/plain',
+    'application/json',
+    'application/zip',
+];
+
+const tabs = {
+    hosted: document.getElementById('tab-hosted') as HTMLButtonElement,
+    deploy: document.getElementById('tab-deploy') as HTMLButtonElement,
+    selfhost: document.getElementById('tab-selfhost') as HTMLButtonElement,
+};
+
+const panels = {
+    hosted: document.getElementById('panel-hosted') as HTMLElement,
+    deploy: document.getElementById('panel-deploy') as HTMLElement,
+    selfhost: document.getElementById('panel-selfhost') as HTMLElement,
+};
+
+type TabName = keyof typeof tabs;
+const TAB_ORDER: TabName[] = ['hosted', 'deploy', 'selfhost'];
+
+const support = {
+    section: document.getElementById('support-section') as HTMLElement,
+    form: document.getElementById('support-form') as HTMLFormElement,
+    email: document.getElementById('support-email') as HTMLInputElement,
+    category: document.getElementById('support-category') as HTMLSelectElement,
+    message: document.getElementById('support-message') as HTMLTextAreaElement,
+    file: document.getElementById('support-file') as HTMLInputElement,
+    company: document.getElementById('support-company') as HTMLInputElement,
+    counter: document.getElementById('support-counter') as HTMLElement,
+    sendBtn: document.getElementById('btn-support-send') as HTMLButtonElement,
+    status: document.getElementById('support-status') as HTMLElement,
+    fallback: document.getElementById('support-fallback') as HTMLElement,
+    waitlistEmail: document.getElementById('waitlist-email') as HTMLInputElement,
+    waitlistBtn: document.getElementById('btn-waitlist') as HTMLButtonElement,
+    waitlistStatus: document.getElementById('waitlist-status') as HTMLElement,
 };
 
 /**
@@ -55,6 +105,13 @@ function showView(viewName: 'loading' | 'loggedOut' | 'loggedIn'): void {
     views.loggedOut.classList.add('hidden');
     views.loggedIn.classList.add('hidden');
     views[viewName].classList.remove('hidden');
+
+    // The header sits outside the views now, so its badge is updated here
+    // rather than being duplicated inside each one.
+    const connected = viewName === 'loggedIn';
+    elements.connectionBadge.textContent = connected ? 'Connected' : 'Not connected';
+    elements.connectionBadge.className = `badge ${connected ? 'badge-connected' : 'badge-disconnected'}`;
+    elements.connectionBadge.classList.toggle('hidden', viewName === 'loading');
 }
 
 /**
@@ -290,6 +347,13 @@ async function loadSettings(): Promise<void> {
 
     elements.backendInput.value = response.data.backendUrl;
     renderPortals(response.data.portals);
+
+    // Someone who already has a backend does not need a pitch for hosting, so
+    // open on the tab that matches where they are. Only on load: once the user
+    // has picked a tab, saving a URL must not move it under them.
+    if (!tabSelectedByUser) {
+        selectTab(response.data.backendUrl ? 'selfhost' : 'hosted');
+    }
 }
 
 /**
@@ -378,6 +442,302 @@ async function initialize(): Promise<void> {
 
     elements.configSection.classList.remove('hidden');
 }
+
+/**
+ * Selects one backend route tab. Panels are toggled rather than rebuilt so the
+ * waitlist field keeps whatever the user had typed.
+ */
+let tabSelectedByUser = false;
+
+function selectTab(name: TabName, focus = false): void {
+    for (const key of TAB_ORDER) {
+        const selected = key === name;
+        tabs[key].setAttribute('aria-selected', String(selected));
+        tabs[key].tabIndex = selected ? 0 : -1;
+        panels[key].classList.toggle('hidden', !selected);
+    }
+    if (focus) {
+        tabs[name].focus();
+    }
+}
+
+/**
+ * Arrow, Home and End navigation across the tab strip, which is what the
+ * tablist role promises to a keyboard or screen reader user.
+ */
+function handleTabKeydown(event: KeyboardEvent, current: TabName): void {
+    const index = TAB_ORDER.indexOf(current);
+    let next: TabName | null = null;
+
+    switch (event.key) {
+        case 'ArrowRight':
+            next = TAB_ORDER[(index + 1) % TAB_ORDER.length];
+            break;
+        case 'ArrowLeft':
+            next = TAB_ORDER[(index - 1 + TAB_ORDER.length) % TAB_ORDER.length];
+            break;
+        case 'Home':
+            next = TAB_ORDER[0];
+            break;
+        case 'End':
+            next = TAB_ORDER[TAB_ORDER.length - 1];
+            break;
+        default:
+            return;
+    }
+
+    event.preventDefault();
+    selectTab(next, true);
+}
+
+/**
+ * Encodes a file as base64 in chunks. Building the binary string one character
+ * at a time is fine for a few kilobytes and unusably slow for a few megabytes,
+ * and String.fromCharCode has an argument count limit, so neither extreme
+ * works on its own.
+ */
+async function fileToBase64(file: File): Promise<string> {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const chunkSize = 8192;
+    const parts: string[] = [];
+
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        parts.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)));
+    }
+
+    return btoa(parts.join(''));
+}
+
+/**
+ * Resolves the MIME type to send. Chrome reports an empty type for extensions
+ * it does not recognise, and a log file is the single most useful attachment
+ * on a support request, so text files are recovered from the name.
+ */
+function resolveAttachmentType(file: File): string | null {
+    if (ALLOWED_ATTACHMENT_TYPES.includes(file.type)) {
+        return file.type;
+    }
+    if (!file.type && /\.(txt|log)$/i.test(file.name)) {
+        return 'text/plain';
+    }
+    return null;
+}
+
+interface SupportPayload {
+    email: string;
+    category: string;
+    message: string;
+    context: Record<string, string>;
+    company: string;
+    attachment?: { filename: string; contentType: string; content: string };
+}
+
+/**
+ * Posts to the support service this build was published with. Returns a human
+ * readable reason on failure, or null on success.
+ */
+async function postSupport(payload: SupportPayload): Promise<string | null> {
+    if (!SUPPORT_URL) {
+        return 'Email support is not enabled in this build.';
+    }
+
+    let response: Response;
+    try {
+        response = await fetch(`${SUPPORT_URL}/support`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+    } catch {
+        return 'Could not reach the support service. Check your connection and try again.';
+    }
+
+    if (response.ok) {
+        return null;
+    }
+
+    const body = await response.json().catch(() => null);
+    const message = (body as { error?: { message?: string } } | null)?.error?.message;
+    return message || 'Could not send the message. Please try again shortly.';
+}
+
+/**
+ * Diagnostics attached to every support message. Deliberately limited to what
+ * helps reproduce a problem: no portal contents, no lead data, no token.
+ */
+function supportContext(): Record<string, string> {
+    return {
+        extensionVersion: chrome.runtime.getManifest().version,
+        backendConfigured: elements.backendInput.value ? 'yes' : 'no',
+        userAgent: navigator.userAgent,
+    };
+}
+
+/**
+ * Reads, validates and encodes the chosen attachment.
+ * Throws a message suitable for display when the file is not acceptable.
+ */
+async function readAttachment(): Promise<SupportPayload['attachment']> {
+    const file = support.file.files?.[0];
+    if (!file) {
+        return undefined;
+    }
+
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+        throw new Error('That file is larger than 5 MB. Attach a smaller one.');
+    }
+    if (file.size === 0) {
+        throw new Error('That file is empty.');
+    }
+
+    const contentType = resolveAttachmentType(file);
+    if (!contentType) {
+        throw new Error('That file type is not accepted. Try a PNG, PDF, text or zip file.');
+    }
+
+    return {
+        filename: file.name,
+        contentType,
+        content: await fileToBase64(file),
+    };
+}
+
+/**
+ * Submits the support form.
+ */
+async function handleSupportSubmit(event: Event): Promise<void> {
+    event.preventDefault();
+
+    const email = support.email.value.trim();
+    const message = support.message.value.trim();
+
+    if (!email || !support.email.checkValidity()) {
+        showSettingStatus(support.status, 'Enter an email address we can reply to.', 'error');
+        return;
+    }
+    if (message.length < 10) {
+        showSettingStatus(support.status, 'Tell us a little more, at least 10 characters.', 'error');
+        return;
+    }
+
+    support.sendBtn.disabled = true;
+    showSettingStatus(support.status, 'Sending...', 'success');
+
+    let attachment: SupportPayload['attachment'];
+    try {
+        attachment = await readAttachment();
+    } catch (error) {
+        support.sendBtn.disabled = false;
+        showSettingStatus(
+            support.status,
+            error instanceof Error ? error.message : 'Could not read that file.',
+            'error',
+        );
+        return;
+    }
+
+    const failure = await postSupport({
+        email,
+        category: support.category.value,
+        message,
+        context: supportContext(),
+        company: support.company.value,
+        attachment,
+    });
+
+    support.sendBtn.disabled = false;
+
+    if (failure) {
+        showSettingStatus(support.status, failure, 'error');
+        return;
+    }
+
+    support.form.reset();
+    updateSupportCounter();
+    showSettingStatus(support.status, 'Sent. We will reply to that address.', 'success');
+}
+
+/**
+ * Registers interest in hosted backends. Same endpoint as support, tagged so
+ * the two land in the inbox distinguishable from each other.
+ */
+async function handleWaitlist(): Promise<void> {
+    const email = support.waitlistEmail.value.trim();
+
+    if (!email || !support.waitlistEmail.checkValidity()) {
+        showSettingStatus(support.waitlistStatus, 'Enter a valid email address.', 'error');
+        return;
+    }
+
+    support.waitlistBtn.disabled = true;
+
+    const failure = await postSupport({
+        email,
+        category: 'hosting-waitlist',
+        message: 'Requested notification when hosted backends open.',
+        context: supportContext(),
+        company: '',
+    });
+
+    support.waitlistBtn.disabled = false;
+
+    if (failure) {
+        showSettingStatus(support.waitlistStatus, failure, 'error');
+        return;
+    }
+
+    support.waitlistEmail.value = '';
+    showSettingStatus(support.waitlistStatus, 'Thanks. We will be in touch.', 'success');
+}
+
+function updateSupportCounter(): void {
+    support.counter.textContent = `${support.message.value.length} / 5000`;
+}
+
+/**
+ * Points every documentation link at its canonical URL and hides the support
+ * form when this build has no support service to post to.
+ */
+function initializeStaticLinks(): void {
+    const links: Array<[string, string]> = [
+        ['link-setup-docs', SETUP_DOCS_URL],
+        ['link-deploy-docs', DEPLOY_DOCS_URL],
+        ['link-issues', ISSUES_URL],
+        ['link-issues-fallback', ISSUES_URL],
+    ];
+
+    for (const [id, href] of links) {
+        const anchor = document.getElementById(id) as HTMLAnchorElement | null;
+        if (anchor) {
+            anchor.href = href;
+        }
+    }
+
+    if (!SUPPORT_URL) {
+        support.form.classList.add('hidden');
+        support.fallback.classList.remove('hidden');
+        support.waitlistBtn.disabled = true;
+        support.waitlistEmail.disabled = true;
+    }
+}
+
+for (const name of TAB_ORDER) {
+    tabs[name].addEventListener('click', () => {
+        tabSelectedByUser = true;
+        selectTab(name);
+    });
+    tabs[name].addEventListener('keydown', (event) => {
+        tabSelectedByUser = true;
+        handleTabKeydown(event, name);
+    });
+}
+
+support.form.addEventListener('submit', (event) => void handleSupportSubmit(event));
+support.message.addEventListener('input', updateSupportCounter);
+support.waitlistBtn.addEventListener('click', () => void handleWaitlist());
+
+initializeStaticLinks();
+updateSupportCounter();
 
 elements.btnLogout.addEventListener('click', handleLogout);
 elements.backendSaveBtn.addEventListener('click', handleSaveBackend);

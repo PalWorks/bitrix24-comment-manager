@@ -454,3 +454,225 @@ h2 {
 .btn-link-danger:hover {
     background: #fee2e2;
 }
+
+/* ---- backend chooser tabs -------------------------------------------- */
+
+.card-intro {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0 0 14px;
+}
+
+.tabs {
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    background: #f3f4f6;
+    border-radius: 8px;
+}
+
+.tab {
+    flex: 1;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #6b7280;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.tab:hover {
+    color: #111827;
+}
+
+.tab[aria-selected='true'] {
+    color: #111827;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
+}
+
+.tab:focus-visible,
+.tab-panel:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.tab-panel {
+    padding: 16px 0 4px;
+}
+
+.panel-lead {
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.6;
+    margin: 0 0 12px;
+}
+
+.panel-note {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.6;
+    margin: 12px 0;
+}
+
+.panel-note code,
+.panel-links code {
+    background: #f3f4f6;
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 11px;
+}
+
+.panel-links {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.6;
+    margin: 12px 0 0;
+}
+
+.panel-links a,
+.card-intro a {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.code-block {
+    margin: 0;
+    padding: 12px;
+    background: #111827;
+    border-radius: 6px;
+    overflow-x: auto;
+}
+
+.code-block code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: #e5e7eb;
+    white-space: pre;
+}
+
+/* ---- hosted plans ---------------------------------------------------- */
+
+.plans {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.plan {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.plan-name {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #6b7280;
+}
+
+.plan-price {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    font-variant-numeric: tabular-nums;
+}
+
+.plan-period {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6b7280;
+}
+
+.plan-features {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+}
+
+.plan-features li {
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: #4b5563;
+}
+
+@media (max-width: 560px) {
+    .plans {
+        grid-template-columns: 1fr;
+    }
+
+    .tabs {
+        flex-wrap: wrap;
+    }
+}
+
+/* ---- support form ---------------------------------------------------- */
+
+.setting-block-divided {
+    border-top: 1px solid #e5e7eb;
+    margin-top: 8px;
+}
+
+.setting-input-block {
+    display: block;
+    width: 100%;
+    flex: none;
+}
+
+textarea.setting-input {
+    resize: vertical;
+    line-height: 1.6;
+}
+
+.setting-counter {
+    margin: 6px 0 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.setting-file {
+    font-size: 12px;
+    color: #4b5563;
+    max-width: 100%;
+}
+
+#btn-support-send {
+    margin-top: 4px;
+}
+
+/* Off screen rather than display:none so a bot that reads the DOM still
+   fills it in, while a person using a screen reader never reaches it. */
+.honeypot {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}

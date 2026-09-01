@@ -11,6 +11,12 @@
 <body>
     <div id="options-app">
 
+        <div class="options-header">
+            <img src="../assets/icon-32.png" alt="" class="header-logo" width="28" height="28">
+            <h1>Bitrix24 Comment Manager</h1>
+            <span id="connection-badge" class="badge badge-disconnected">Not connected</span>
+        </div>
+
         <div id="view-loading" class="view">
             <div class="loading-container">
                 <div class="spinner"></div>
@@ -20,13 +26,106 @@
 
 
         <div id="config-section" class="card hidden">
-            <h2 class="card-title">Configuration</h2>
+            <h2 class="card-title">Backend</h2>
+            <p class="card-intro">
+                This extension routes every comment through a backend so the audit trail lives
+                somewhere the agent cannot edit. Choose how you want to get one.
+            </p>
 
-            <div class="setting-block">
+            <div class="tabs" role="tablist" aria-label="How to get a backend">
+                <button class="tab" type="button" role="tab" id="tab-hosted" aria-controls="panel-hosted"
+                    aria-selected="false" tabindex="-1">Hosted</button>
+                <button class="tab" type="button" role="tab" id="tab-deploy" aria-controls="panel-deploy"
+                    aria-selected="false" tabindex="-1">Deploy your own</button>
+                <button class="tab" type="button" role="tab" id="tab-selfhost" aria-controls="panel-selfhost"
+                    aria-selected="true" tabindex="0">Self hosted</button>
+            </div>
+
+            <div id="panel-hosted" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-hosted" tabindex="0">
+                <p class="panel-lead">
+                    We run the backend, you paste the URL we send you. Nothing to deploy and
+                    nothing to patch.
+                </p>
+
+                <ul class="plans">
+                    <li class="plan">
+                        <span class="plan-name">Free</span>
+                        <span class="plan-price">$0</span>
+                        <ul class="plan-features">
+                            <li>1 portal, up to 5 agents</li>
+                            <li>1,000 comments a month</li>
+                            <li>90 days of audit history</li>
+                        </ul>
+                    </li>
+                    <li class="plan">
+                        <span class="plan-name">Team</span>
+                        <span class="plan-price">$19<span class="plan-period">/mo</span></span>
+                        <ul class="plan-features">
+                            <li>3 portals, up to 25 agents</li>
+                            <li>10,000 comments a month</li>
+                            <li>12 months of history, CSV export</li>
+                        </ul>
+                    </li>
+                    <li class="plan">
+                        <span class="plan-name">Business</span>
+                        <span class="plan-price">$49<span class="plan-period">/mo</span></span>
+                        <ul class="plan-features">
+                            <li>Unlimited portals and agents</li>
+                            <li>Unlimited comments</li>
+                            <li>3 years of history, priority support</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <p class="panel-note">
+                    Hosting is not open yet. Leave your address and we will write to you when it is.
+                    Everything the hosted plan runs is the same code as this repository, so nothing
+                    here locks you in: export your audit log and self host at any time.
+                </p>
+
+                <div class="setting-row">
+                    <label class="visually-hidden" for="waitlist-email">Email address</label>
+                    <input id="waitlist-email" class="setting-input" type="email"
+                        placeholder="you@company.com" autocomplete="email" spellcheck="false">
+                    <button id="btn-waitlist" class="btn-primary" type="button">Notify me</button>
+                </div>
+                <p id="waitlist-status" class="setting-status hidden" role="status"></p>
+            </div>
+
+            <div id="panel-deploy" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-deploy" tabindex="0">
+                <p class="panel-lead">
+                    One command brings up the backend and its database on any machine with Docker,
+                    from a laptop to a five dollar VPS.
+                </p>
+                <pre class="code-block"><code>git clone https://github.com/PalWorks/bitrix24-comment-manager
+cd bitrix24-comment-manager
+cp .env.docker.example .env
+docker compose up -d</code></pre>
+                <p class="panel-note">
+                    Fill in your Bitrix24 client ID and secret in <code>.env</code> first. The
+                    compose file generates the signing and encryption keys for you on first run.
+                    Put it behind a domain with HTTPS, then paste that origin below.
+                </p>
+                <p class="panel-links">
+                    <a id="link-deploy-docs" href="#" target="_blank" rel="noopener">Deployment guide</a>
+                </p>
+            </div>
+
+            <div id="panel-selfhost" class="tab-panel" role="tabpanel" aria-labelledby="tab-selfhost" tabindex="0">
+                <p class="panel-lead">
+                    Already have one? Paste the origin your administrator gave you. If you are the
+                    administrator, the setup guide walks through registering the Bitrix24
+                    application and deploying the server yourself.
+                </p>
+                <p class="panel-links">
+                    <a id="link-setup-docs" href="#" target="_blank" rel="noopener">Setup guide</a>
+                </p>
+            </div>
+
+            <div class="setting-block setting-block-divided">
                 <label class="setting-label" for="opt-backend-url">Backend URL</label>
                 <p class="setting-help">
-                    The API this extension talks to. Run your own from the project repository,
-                    or use the one your administrator gave you.
+                    The API this extension talks to, whichever route you took above.
                 </p>
                 <div class="setting-row">
                     <input id="opt-backend-url" class="setting-input" type="url"
@@ -55,11 +154,6 @@
         </div>
 
         <div id="view-logged-out" class="view hidden">
-            <div class="options-header">
-                <img src="../assets/icon-32.png" alt="" class="header-logo" width="28" height="28">
-                <h1>Bitrix24 Comment Manager</h1>
-                <span class="badge badge-disconnected">Not Connected</span>
-            </div>
             <div class="card">
                 <p class="logged-out-message">You are not logged in. Open the extension popup to connect your Bitrix24
                     account.</p>
@@ -67,12 +161,6 @@
         </div>
 
         <div id="view-logged-in" class="view hidden">
-            <div class="options-header">
-                <img src="../assets/icon-32.png" alt="" class="header-logo" width="28" height="28">
-                <h1>Bitrix24 Comment Manager</h1>
-                <span class="badge badge-connected">Connected</span>
-            </div>
-
             <div class="card">
                 <h2 class="card-title">Agent Information</h2>
                 <div class="info-row">
@@ -120,6 +208,67 @@
 
             <button id="btn-options-logout" class="btn btn-danger">Logout</button>
             <p id="logout-confirmation" class="confirmation-message hidden">You have been logged out.</p>
+        </div>
+
+        <div id="support-section" class="card">
+            <h2 class="card-title">Get help</h2>
+            <p class="card-intro">
+                Tell us what went wrong and we will reply by email. Attach a screenshot or a log
+                if it helps.
+            </p>
+
+            <form id="support-form" novalidate>
+                <div class="setting-block">
+                    <label class="setting-label" for="support-email">Your email</label>
+                    <input id="support-email" class="setting-input setting-input-block" type="email"
+                        autocomplete="email" spellcheck="false" required placeholder="you@company.com">
+                </div>
+
+                <div class="setting-block">
+                    <label class="setting-label" for="support-category">Topic</label>
+                    <select id="support-category" class="setting-input setting-input-block">
+                        <option value="bug">Something is broken</option>
+                        <option value="question">A question about setup</option>
+                        <option value="billing">Hosting and billing</option>
+                    </select>
+                </div>
+
+                <div class="setting-block">
+                    <label class="setting-label" for="support-message">What happened</label>
+                    <textarea id="support-message" class="setting-input setting-input-block"
+                        rows="5" required maxlength="5000"
+                        placeholder="What you did, what you expected, and what happened instead."></textarea>
+                    <p id="support-counter" class="setting-help setting-counter">0 / 5000</p>
+                </div>
+
+                <div class="setting-block">
+                    <label class="setting-label" for="support-file">Attachment (optional)</label>
+                    <input id="support-file" class="setting-file" type="file"
+                        accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain,application/json,application/zip">
+                    <p id="support-file-help" class="setting-help">
+                        PNG, JPEG, GIF, WebP, PDF, text, JSON or zip, up to 5 MB.
+                    </p>
+                </div>
+
+                <div class="honeypot" aria-hidden="true">
+                    <label for="support-company">Company</label>
+                    <input id="support-company" type="text" tabindex="-1" autocomplete="off">
+                </div>
+
+                <button id="btn-support-send" class="btn-primary" type="submit">Send</button>
+                <p id="support-status" class="setting-status hidden" role="status"></p>
+            </form>
+
+            <p id="support-fallback" class="panel-links hidden">
+                Email support is not enabled in this build.
+                <a id="link-issues-fallback" href="#" target="_blank" rel="noopener">Open an issue on GitHub</a>
+                instead.
+            </p>
+
+            <p class="panel-links">
+                Prefer to work in the open?
+                <a id="link-issues" href="#" target="_blank" rel="noopener">Browse or file an issue</a>.
+            </p>
         </div>
 
     </div>
